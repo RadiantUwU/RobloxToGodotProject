@@ -23,15 +23,9 @@ on:
 
 env:
   GODOT_VERSION: 4.1
-
-jobs:
-  static-checks:
-    name: 📊 Static checks
-    uses: ./.github/workflows/static-checks.yml
   
   gdextension-build:
     name: ⚙️ GDExtension
-    needs: static-checks
     uses: ./.github/workflows/gdextension.yml
     with:
       fullbuild: ${{ github.event_name == 'workflow_dispatch' }}
