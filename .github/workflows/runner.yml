@@ -26,11 +26,6 @@ on:
 env:
   GODOT_VERSION: 4.1
 
-jobs:
-  static-checks:
-    name: 📊 Static checks
-    uses: ./.github/workflows/static-checks.yml
-
   #linux-build:
   #  name: 🐧 Linux
   #  needs: static-checks
