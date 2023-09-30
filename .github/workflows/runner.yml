@@ -23,7 +23,8 @@ on:
 
 env:
   GODOT_VERSION: 4.1
-  
+
+jobs:  
   gdextension-build:
     name: ⚙️ GDExtension
     uses: ./.github/workflows/gdextension.yml
