@@ -25,7 +25,7 @@ on:
 
 env:
   GODOT_VERSION: 4.1
-
+jobs:
   #linux-build:
   #  name: 🐧 Linux
   #  needs: static-checks
