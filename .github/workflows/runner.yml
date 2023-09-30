@@ -87,7 +87,6 @@ env:
   
   gdextension-build:
     name: ⚙️ GDExtension
-    needs: static-checks
     uses: ./.github/workflows/gdextension.yml
     with:
       fullbuild: ${{ github.event_name == 'workflow_dispatch' }}
