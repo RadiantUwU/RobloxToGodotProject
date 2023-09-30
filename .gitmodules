@@ -4,4 +4,4 @@
 	branch = master
 [submodule "luau"]
 	path = luau
-	url = https://github.com/Roblox/luau
+	url = https://github.com/RadiantUwU/luau
