@@ -4,6 +4,9 @@
 .godot/
 /gen/
 
+# Luau module, force to change version
+luau
+
 # Godot 3.x ignores
 include/gen
 src/gen
