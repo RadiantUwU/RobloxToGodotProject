@@ -5,6 +5,8 @@
 #include <godot_cpp/variant/variant.hpp>
 #include <godot_cpp/variant/array.hpp>
 #include <godot_cpp/classes/node.hpp>
+#include <lua.h>
+#include <lualib.h>
 #include <utils.h>
 
 
@@ -238,4 +240,123 @@ int LuauVM::do_string(const String &code, const String &chunkname) {
         return status;
     status = lua_pcall(0, LUA_MULTRET, 0);
     return status;
+}
+
+// task scheduler
+// NOTE: task_synchronize and task_desynchronize do not work yet.
+// TODO: add em
+int LuauVM::task_create(lua_State *L) {
+    int nargs = lua_gettop(L);
+    if (nargs == 0) {
+        return luaG_pusherror(L, "functionOrThread expected function, got nil.");
+    }
+    if (!lua_isfunction(L, 1)) {
+        lua_pushfstring(L, "functionOrThread expected function, got %s", lua_typename(L,lua_type(L,1)));
+        return lua_error(L);
+    }
+    // append to registry.task_waiting_create the arguments
+    lua_pushvalue(L, LUA_REGISTRYINDEX);
+    lua_getfield(L, -1, "task_waiting_create");
+    lua_objlen(L, -1);
+    lua_remove(L, -3); // pop LUA_REGISTRYINDEX
+    lua_newtable(L);
+    lua_pushvalue(L, LUA_REGISTRYINDEX);
+    lua_pushinteger(L, 1);
+    lua_getfield(L, -2, "task_serialized"); // add to arguments table task_serialized state
+    lua_settable(L, -4);
+    lua_pop(L, 1); // pop LUA_REGISTRYINDEX
+    for (int i = 1; i < nargs+1; i++) {
+        lua_pushinteger(L, i+1);
+        lua_pushvalue(L, i);
+        lua_settable(L, -3);
+    }
+    lua_settable(L, -3);
+    lua_pop(L, nargs+1);
+    return 0;
+}
+int LuauVM::task_defer(lua_State *L) {
+    int nargs = lua_gettop(L);
+    if (nargs == 0) {
+        return luaG_pusherror(L, "functionOrThread expected function, got nil.");
+    }
+    if (!lua_isfunction(L, 1)) {
+        lua_pushfstring(L, "functionOrThread expected function, got %s", lua_typename(L,lua_type(L,1)));
+        return lua_error(L);
+    }
+    // append to registry.task_defer_create the arguments
+    lua_pushvalue(L, LUA_REGISTRYINDEX);
+    lua_getfield(L, -1, "task_defer_create");
+    lua_objlen(L, -1);
+    lua_remove(L, -3); // pop LUA_REGISTRYINDEX
+    lua_newtable(L);
+    lua_pushvalue(L, LUA_REGISTRYINDEX);
+    lua_pushinteger(L, 1);
+    lua_getfield(L, -2, "task_serialized"); // add to arguments table task_serialized state
+    lua_settable(L, -4);
+    lua_pop(L, 1); // pop LUA_REGISTRYINDEX
+    for (int i = 1; i < nargs+1; i++) {
+        lua_pushinteger(L, i+1);
+        lua_pushvalue(L, i);
+        lua_settable(L, -3);
+    }
+    lua_settable(L, -3);
+    lua_pop(L, nargs+1);
+    return 0;
+}
+int LuauVM::task_delay(lua_State *L) {
+    int nargs = lua_gettop(L);
+    if (nargs == 0) {
+        return luaG_pusherror(L, "functionOrThread expected function, got nil.");
+    } else if (nargs == 1) {
+        return luaG_pusherror(L, "delay expected number, got nil.");
+    }
+    if (!lua_isfunction(L, 1)) {
+        lua_pushfstring(L, "functionOrThread expected function, got %s", lua_typename(L,lua_type(L,1)));
+        return lua_error(L);
+    }
+    if (!lua_isnumber(L, 2)) {
+        lua_pushfstring(L, "delay expected number, got %s", lua_typename(L,lua_type(L,2)));
+        return lua_error(L);
+    }
+    // append to registry.task_defer_create the arguments
+    lua_pushvalue(L, LUA_REGISTRYINDEX);
+    lua_getfield(L, -1, "task_defer_create");
+    lua_objlen(L, -1);
+    lua_remove(L, -3); // pop LUA_REGISTRYINDEX
+    lua_newtable(L);
+    lua_pushvalue(L, LUA_REGISTRYINDEX);
+    lua_pushinteger(L, 1);
+    lua_getfield(L, -2, "task_serialized"); // add to arguments table task_serialized state
+    lua_settable(L, -4);
+    lua_pop(L, 1);  // pop LUA_REGISTRYINDEX
+    lua_pushinteger(L, 2); // write delay as 2nd argument
+    lua_pushvalue(L, 2);
+    lua_settable(L, -3);
+    lua_pushinteger(L, 3); // write func as 3nd argument
+    lua_pushvalue(L, 1);
+    lua_settable(L, -3);
+    for (int i = 3; i < nargs+1; i++) { // write rest of args
+        lua_pushinteger(L, i+1);
+        lua_pushvalue(L, i);
+        lua_settable(L, -3);
+    }
+    lua_settable(L, -3);
+    lua_pop(L, nargs+1);
+    return 0;
+}
+int LuauVM::task_desynchronize(lua_State *L) {
+    int nargs = lua_gettop(L);
+    if (nargs > 0) {
+        lua_pushfstring(L, "expected 0 arguments, got %d", nargs);
+        return lua_error(L);
+    }
+    return 0;
+}
+int LuauVM::task_synchronize(lua_State *L) {
+    int nargs = lua_gettop(L);
+    if (nargs > 0) {
+        lua_pushfstring(L, "expected 0 arguments, got %d", nargs);
+        return lua_error(L);
+    }
+    return 0;
 }
