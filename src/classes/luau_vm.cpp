@@ -98,6 +98,10 @@ int metatable_object__eq(lua_State *L) {
     return 1;
 }
 
+int metatable_instance__index(lua_State *L) {
+    
+}
+
 void LuauVM::create_metatables() {
     luaL_newmetatable("object");
     
@@ -109,7 +113,15 @@ void LuauVM::create_metatables() {
     ::lua_pushcfunction(L, metatable_object__eq, NULL);
     ::lua_rawsetfield(L, -2, "__eq");
 
-    (lua_pop)(1);
+
+    luaL_newmetatable("Instance");
+
+    ::lua_pushstring(L, "Instance");
+    ::lua_rawsetfield(L, -2, "__type");
+    
+    ::lua_pushcfunction(L,metatable_instance__index, NULL);
+    ::lua_rawsetfield(L, -2, "__index");
+    (lua_pop)(2);
 }
 
 
