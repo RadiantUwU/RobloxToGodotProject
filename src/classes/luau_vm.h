@@ -30,6 +30,8 @@ private:
     static int task_synchronize(lua_State *L);
     static int task_wait(lua_State *L);
     static int task_cancel(lua_State *L);
+
+    static int task_resume_waiting(lua_State* L);
 protected:
     static void _bind_methods();
     static void _bind_passthrough_methods();

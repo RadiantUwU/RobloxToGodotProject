@@ -213,6 +213,14 @@ void LuauVM::open_all_libraries() {
         lua_pushstring(lib->name);
         lua_call(1, 0);
     }
+    lua_pushvalue(L, LUA_REGISTRYINDEX); // debug.getregistry().OS_CLOCK = _G.os_clock
+    lua_pushglobaltable(L);
+    lua_getfield(L, -1, "os");
+    lua_remove(-2);
+    lua_getfield(L, -1, "clock");
+    lua_remove(-2);
+    lua_setfield(L, -2, "OS_CLOCK");
+    lua_pop(1);
 }
 
 
@@ -245,6 +253,17 @@ int LuauVM::do_string(const String &code, const String &chunkname) {
 // task scheduler
 // NOTE: task_synchronize and task_desynchronize do not work yet.
 // TODO: add em
+
+/* TASK SCHEDULER LOOP:
+ GODOT call_deferred:
+  - run task_defer_create
+  - process inputs
+  - do rendering: can be forced with RenderingServer.force_draw()
+  - replication poll
+  - run task_throttled_wait
+*/
+
+
 int LuauVM::task_create(lua_State *L) {
     int nargs = lua_gettop(L);
     if (nargs == 0) {
@@ -359,4 +378,75 @@ int LuauVM::task_synchronize(lua_State *L) {
         return lua_error(L);
     }
     return 0;
+}
+int LuauVM::task_wait(lua_State* L) {
+    int nargs = lua_gettop(L);
+    lua_Number wait_time;
+    if (nargs > 1) {
+        lua_pushfstring(L, "expected 1 argument, got %d", nargs);
+        return lua_error(L);
+    } else if (nargs == 1) {
+        if (lua_isnil(L, 1)) {
+            wait_time = 0;
+        } else if (!lua_isnumber(L, 1)) {
+            lua_pushfstring(L, "duration expected number, got %s", lua_typename(L,lua_type(L,1)));
+            return lua_error(L);
+        } else wait_time = lua_tonumber(L, 1);
+        lua_pop(1);
+    } else wait_time = 0;
+    /*
+        function task.wait(duration)
+            local task_defer_resume = debug.getregistry().task_defer_resume
+            task_defer_resume[#task_defer_resume+1]={debug.getregistry().task_is_in_sync,os.clock(),duration,coroutine.running()}
+            coroutine.yield()
+        end
+    */
+    lua_pushvalue(L, LUA_REGISTRYINDEX); 
+    lua_getfield(L, -1, "task_defer_resume");
+    lua_objlen(L, -1);
+    lua_remove(L, -3);
+    lua_newtable(L);
+    lua_pushinteger(L, 1);
+    lua_pushvalue(L, LUA_REGISTRYINDEX);
+    lua_getfield(L, -1, "OS_CLOCK");
+    lua_remove(L,-2);
+    lua_call(L, 0, 1);
+    lua_settable(L, -3);
+    lua_pushinteger(L, 2);
+    lua_pushnumber(L, wait_time);
+    lua_settable(L,-3);
+    lua_pushinteger(L, 3);
+    lua_pushthread(L);
+    lua_settable(L,-3);
+    lua_settable(L,-3);
+    lua_pop(1);
+    return lua_yield(L, 0);
+}
+int LuauVM::task_cancel(lua_State* L) {
+    int nargs = lua_gettop(L);
+    if (nargs != 1) {
+        lua_pushfstring(L, "expected 1 argument, got %d", nargs);
+        return lua_error(L);
+    } else if (!lua_isthread(L, 1)) {
+        lua_pushfstring(L, "thread expected thread, got %s", lua_typename(L,lua_type(L,1)));
+        return lua_error(L);
+    }
+    lua_State* thread = lua_tothread(L, -1);
+    int state = lua_status(L);
+    if (state == LUA_OK) {
+        lua_pushliteral(L, "cannot cancel task");
+        return lua_error(L);
+    } else if (state == LUA_YIELD) {
+        lua_closethread(thread, L);
+    }
+    lua_pop(1);
+    return 0;
+}
+
+int LuauVM::task_resume_waiting(lua_State* L) {
+    /*
+    function _task.task_resume_waiting()
+        
+    end
+    */
 }
