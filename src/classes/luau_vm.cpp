@@ -121,7 +121,7 @@ void LuauVM::create_metatables() {
     ::lua_pushstring(L, "Instance");
     ::lua_rawsetfield(L, -2, "__type");
     
-    ::lua_pushcfunction(L,metatable_instance__index, NULL);
+    //::lua_pushcfunction(L, metatable_instance__index, NULL);
     ::lua_rawsetfield(L, -2, "__index");
     (lua_pop)(2);
 }
@@ -130,11 +130,12 @@ void LuauVM::create_metatables() {
 
 static int godot_print(lua_State* L) {
     int nargs = ::lua_gettop(L);
+    LuauVM *node = lua_getnode(L);
 
     String s = String();
     for (int i = 1; i <= nargs; i++) {
         String ss;
-        if (node->lua_isnumber(i) || node->lua_isstring(i))
+        if (lua_isnumber(L, i) || lua_isstring(L, i))
             ss = (node->lua_tostring)(i);
         else {
             ::lua_rawgetfield(L, LUA_GLOBALSINDEX, "tostring"); // Push global "tostring"
@@ -148,7 +149,7 @@ static int godot_print(lua_State* L) {
             }
 
             ss = (node->lua_tostring)(-1);
-            (node->lua_pop)(1); // Pop tostring'ed argument
+            lua_pop(L, 1); // Pop tostring'ed argument
         }
 
         s += ss;
@@ -164,7 +165,7 @@ int lua_loadstring(lua_State* L)
 {
     size_t l = 0;
     const char* s = ::luaL_checklstring(L, 1, &l);
-    const char* chunkname = ::luaL_optstring(L, 2, s);
+    const char* chunkname = luaL_optstring(L, 2, s);
 
     ::lua_setsafeenv(L, LUA_ENVIRONINDEX, false);
 
@@ -282,14 +283,14 @@ int LuauVM::task_create(lua_State *L) {
     }
     nargs--;
     bool isnew = false;
-    if ((::lua_isfunction)(L, 1)) {
+    if (lua_isfunction(L, 1)) {
         thr = ::lua_newthread(L);
         ::lua_insert(L, 1);
         ::lua_pushvalue(L, 2); // move function from stack 2 to -1
         ::lua_remove(L, 2); 
         ::lua_xmove(L, thr, nargs+1); // all args + function
         isnew = true;
-    } else if ((::lua_isthread)(L, 1)) {
+    } else if (lua_isthread(L, 1)) {
         thr = ::lua_tothread(L, 1); // no function specified
     } else {
         ::lua_pushfstring(L, "functionOrThread expected function|thread, got %s", ::lua_typename(L,::lua_type(L,1)));
@@ -304,8 +305,8 @@ int LuauVM::task_create(lua_State *L) {
         ::lua_pushstring(L, "cannot resume thread");
         ::lua_error(L);
     }
-    if (status != LUA_YIELD and status != LUA_BREAK and status != LUA_OK) handle_error(L, thr);
-    (lua_pop)(nres);
+    if (status != LUA_YIELD and status != LUA_BREAK and status != LUA_OK) handle_error(thr);
+    lua_pop(L, nres);
     return 1; // the thread
 }
 int LuauVM::task_defer(lua_State *L) {
@@ -317,14 +318,14 @@ int LuauVM::task_defer(lua_State *L) {
         ::lua_pushstring(L, "task.defer expected 1 or more arguments, got 0");
         ::lua_error(L);
     }
-    if ((::lua_isfunction)(L, 1)) {
+    if (lua_isfunction(L, 1)) {
         thr = ::lua_newthread(L);
         ::lua_pushvalue(L, 1);
         ::lua_remove(L, 1);
         ::lua_xmove(L, thr, 1);
         ::lua_insert(L, 1); // thread is now arg 1
         isnew = true;
-    } else if ((::lua_isthread)(L, 1)) {
+    } else if (lua_isthread(L, 1)) {
         thr = ::lua_tothread(L, 1);
         if (::lua_costatus(L, thr) != LUA_COSUS) {
             ::lua_pushstring(L, "cannot resume thread");
@@ -346,8 +347,8 @@ int LuauVM::task_defer(lua_State *L) {
         ::lua_settable(L, -3);
     }
     ::lua_settable(L, -3);
-    (lua_pop)(1); // pop task_defer_spawn
-    (lua_pop)(nargs-1); // pop all arguments except the thread
+    lua_pop(L, 1); // pop task_defer_spawn
+    lua_pop(L, nargs-1); // pop all arguments except the thread
     return 1; // return thread
 }
 int LuauVM::task_delay(lua_State *L) {
@@ -360,13 +361,13 @@ int LuauVM::task_delay(lua_State *L) {
         ::lua_pushstring(L, "delay expected number, got nil.");
         ::lua_error(L);
     }
-    if ((::lua_isfunction)(L, 1)) {
+    if (lua_isfunction(L, 1)) {
         thr = ::lua_newthread(L);
         ::lua_pushvalue(L, 1); // copy function from index 1 to top of stack
         ::lua_xmove(L, thr, 1); // move function to thr
         ::lua_remove(L, 1); // remove function
         ::lua_insert(L, 1); // move thread to 1
-    } else if ((::lua_isthread)(L, 1)) {
+    } else if (lua_isthread(L, 1)) {
         if (::lua_costatus(L, thr) == LUA_COSUS) {
             ::lua_pushstring(L, "cannot resume thread");
             ::lua_error(L);
@@ -389,7 +390,7 @@ int LuauVM::task_delay(lua_State *L) {
     ::lua_pushinteger(L, 1);
     ::lua_getfield(L, -2, "task_serialized");
     ::lua_settable(L, -4); // add to arguments table task_serialized state, removes key value pair
-    (lua_pop)(1);  // pop LUA_REGISTRYINDEX
+    lua_pop(L, 1);  // pop LUA_REGISTRYINDEX
     ::lua_pushinteger(L, 3); // write when_it_started as 2nd argument
     ::lua_pushvalue(L, LUA_REGISTRYINDEX);
     ::lua_getfield(L, -1, "OS_CLOCK");
@@ -408,7 +409,7 @@ int LuauVM::task_delay(lua_State *L) {
         ::lua_settable(L, -3);
     }
     ::lua_settable(L, -3);// push to task_defer delay
-    (lua_pop)(nargs); // pop all but the thread
+    lua_pop(L, nargs); // pop all but the thread
     return 1; // return thread
 }
 int LuauVM::task_desynchronize(lua_State *L) {
@@ -440,7 +441,7 @@ int LuauVM::task_wait(lua_State* L) {
             ::lua_pushfstring(L, "duration expected number, got %s", ::lua_typename(L,::lua_type(L,1)));
             ::lua_error(L);
         } else wait_time = ::lua_tonumber(L, 1);
-        (lua_pop)(1);
+        lua_pop(L, 1);
     } else wait_time = 0;
     /*
         function task.wait(duration)
@@ -467,7 +468,7 @@ int LuauVM::task_wait(lua_State* L) {
     ::lua_pushthread(L);
     ::lua_settable(L,-3);
     ::lua_settable(L,-3);
-    (lua_pop)(1);
+    lua_pop(L, 1);
     return ::lua_yield(L, 0);
 }
 int LuauVM::task_cancel(lua_State* L) {
@@ -475,7 +476,7 @@ int LuauVM::task_cancel(lua_State* L) {
     if (nargs != 1) {
         ::lua_pushfstring(L, "expected 1 argument, got %d", nargs);
         ::lua_error(L);
-    } else if (!(::lua_isthread)(L, 1)) {
+    } else if (!lua_isthread(L, 1)) {
         ::lua_pushfstring(L, "thread expected thread, got %s", ::lua_typename(L,::lua_type(L,1)));
         ::lua_error(L);
     }
@@ -487,7 +488,7 @@ int LuauVM::task_cancel(lua_State* L) {
     } else {
         ::lua_resetthread(thread);
     }
-    (lua_pop)(1);
+    lua_pop(L, 1);
     return 0;
 }
 void LuauVM::handle_error(lua_State* thr) {
@@ -506,10 +507,10 @@ bool LuauVM::task_resumption_cycle(bool terminate = false) {
     ::lua_getfield(L, -1, "OS_CLOCK");
     ::lua_call(L, 0, 1);
     curr_os_clock = ::lua_tonumber(L, -1);
-    (lua_pop)(1);
+    lua_pop(L, 1);
     ::lua_getfield(L, -1, "task_serialized");
     is_serialized_res_cycle = ::lua_toboolean(L, -1);
-    (lua_pop)(1);
+    lua_pop(L, 1);
     ::lua_getfield(L, -1, "task_defer_spawn");
     ::lua_newtable(L); 
     ::lua_setfield(L, -3, "task_defer_spawn"); // clear table with empty clone
@@ -520,7 +521,7 @@ bool LuauVM::task_resumption_cycle(bool terminate = false) {
         ::lua_geti(L, -1, 1);
         lua_State* thr = ::lua_tothread(L, -1);
         if (::lua_costatus(L, thr) != LUA_COSUS) {
-            (lua_pop)(2); // thread and the table containing the thread
+            lua_pop(L, 2); // thread and the table containing the thread
         } else {
             // load all values
             int tk,status,nargs,nres = 0;
@@ -532,11 +533,11 @@ bool LuauVM::task_resumption_cycle(bool terminate = false) {
             }
             status = ::lua_resume(thr, L, nargs, &nres);
             if (status == LUA_ERRERR or status == LUA_ERRMEM or status == LUA_ERRRUN or status == LUA_ERRSYNTAX) handle_error(thr);
-            else (lua_pop)(nres);
-            (lua_pop)(2); // pop table and thread
+            else lua_pop(L, nres);
+            lua_pop(L, 2); // pop table and thread
         }
     }
-    (lua_pop)(2); // pop the table and the key
+    lua_pop(L, 2); // pop the table and the key
     ::lua_getfield(L, -1, "task_wait_delay");
     ::lua_newtable(L); 
     ::lua_setfield(L, -3, "task_wait_delay"); // clear table with empty clone
@@ -547,21 +548,21 @@ bool LuauVM::task_resumption_cycle(bool terminate = false) {
         ::lua_geti(L, -1, 1);
         bool is_serialized = ::lua_toboolean(L, -1);
         if (is_serialized != is_serialized_res_cycle) {
-            (lua_pop)(2);
+            lua_pop(L, 2);
             continue;
-        } else (lua_pop)(1);
+        } else lua_pop(L, 1);
         lua_Number duration, when_it_started;
         ::lua_geti(L, -1, 2);
         ::lua_geti(L, -2, 3);
         duration = ::lua_tonumber(L, -1);
         when_it_started = ::lua_tonumber(L, -2);
-        (lua_pop)(2);
+        lua_pop(L, 2);
         ::lua_geti(L, -1, 4);
         lua_State* thr = ::lua_tothread(L, -1);
         if (curr_os_clock<duration+when_it_started) {
-            (lua_pop)(2); // the thread and the table
+            lua_pop(L, 2); // the thread and the table
         } else if (::lua_costatus(L, thr) != LUA_COSUS) {
-            (lua_pop)(2); // thread and the table containing the thread
+            lua_pop(L, 2); // thread and the table containing the thread
         } else {
             // load all values
             int tk,status,nargs,nres = 0;
@@ -573,16 +574,16 @@ bool LuauVM::task_resumption_cycle(bool terminate = false) {
             }
             if (terminate) {
                 terminate_error(thr);
-                (lua_pop)(nargs);
+                lua_pop(L, nargs);
             } else {
                 status = ::lua_resume(thr, L, nargs, &nres);
             }
             if (status == LUA_ERRERR or status == LUA_ERRMEM or status == LUA_ERRRUN or status == LUA_ERRSYNTAX) handle_error(thr);
-            else (lua_pop)(nres);
-            (lua_pop)(2); // pop table and thread
+            else lua_pop(L, nres);
+            lua_pop(L, 2); // pop table and thread
         }
     }
-    (lua_pop)(2); // pop the table and the key
+    lua_pop(L, 2); // pop the table and the key
     ::lua_getfield(L, -1, "task_wait_resume");
     ::lua_newtable(L); 
     ::lua_setfield(L, -3, "task_wait_resume"); // clear table with empty clone
@@ -593,34 +594,34 @@ bool LuauVM::task_resumption_cycle(bool terminate = false) {
         ::lua_geti(L, -1, 1);
         bool is_serialized = ::lua_toboolean(L, -1);
         if (is_serialized != is_serialized_res_cycle) {
-            (lua_pop)(2);
+            lua_pop(L, 2);
             continue;
-        } else (lua_pop)(1);
+        } else lua_pop(L, 1);
         lua_Number duration, when_it_started;
         ::lua_geti(L, -1, 2);
         ::lua_geti(L, -2, 3);
         duration = ::lua_tonumber(L, -1);
         when_it_started = ::lua_tonumber(L, -2);
-        (lua_pop)(2);
+        lua_pop(L, 2);
         ::lua_geti(L, -1, 4);
         lua_State* thr = ::lua_tothread(L, -1);
         if (curr_os_clock<duration+when_it_started) {
-            (lua_pop)(2); // the thread and the table
+            lua_pop(L, 2); // the thread and the table
         } else if (::lua_costatus(L, thr) != LUA_COSUS) {
-            (lua_pop)(2); // thread and the table containing the thread
+            lua_pop(L, 2); // thread and the table containing the thread
         } else {
             // load all values
             int tk,status,nres = 0;
             if (terminate) {
                 terminate_error(thr);
-                (lua_pop)(nargs);
+                lua_pop(L, nargs);
             } else {
                 ::lua_pushnumber(L, curr_os_clock-when_it_started);
                 status = ::lua_resume(thr, L, 1, &nres);
             }
             if (status == LUA_ERRERR or status == LUA_ERRMEM or status == LUA_ERRRUN or status == LUA_ERRSYNTAX) handle_error(thr);
-            else (lua_pop)(nres);
-            (lua_pop)(2); // pop table and thread
+            else lua_pop(L, nres);
+            lua_pop(L, 2); // pop table and thread
         }
     }
 }
