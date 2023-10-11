@@ -1,5 +1,18 @@
 name: GDExtension
 on:
+  workflow_dispatch:
+    inputs:
+      fullbuild:
+        description: "Whether or not to build all targets"
+        required: true
+        type: boolean
+        default: false
+      
+      godot_version:
+        description: "Version of godot to be used"
+        required: true
+        type: string
+        default: '4.1'
   workflow_call:
     inputs:
       fullbuild:
