@@ -123,7 +123,7 @@ void LuauVM::create_metatables() {
     
     //::lua_pushcfunction(L, metatable_instance__index, NULL);
     ::lua_rawsetfield(L, -2, "__index");
-    (lua_pop)(2);
+    lua_pop(L, 2);
 }
 
 
@@ -136,7 +136,7 @@ static int godot_print(lua_State* L) {
     for (int i = 1; i <= nargs; i++) {
         String ss;
         if (lua_isnumber(L, i) || lua_isstring(L, i))
-            ss = (node->lua_tostring)(i);
+            ss = (node->luaL_tostring)(i);
         else {
             ::lua_rawgetfield(L, LUA_GLOBALSINDEX, "tostring"); // Push global "tostring"
             ::lua_pushvalue(L, i); // Push argument
@@ -148,7 +148,7 @@ static int godot_print(lua_State* L) {
                 return 0;
             }
 
-            ss = (node->lua_tostring)(-1);
+            ss = (node->luaL_tostring)(-1);
             lua_pop(L, 1); // Pop tostring'ed argument
         }
 
@@ -233,7 +233,7 @@ void LuauVM::open_all_libraries() {
 
 
 int64_t LuauVM::get_memory_usage_bytes() {
-    return lua_gc(LUA_GCCOUNTB, 0) + 1024 * lua_gc(LUA_GCCOUNT, 0);;
+    return lua_gc(L, LUA_GCCOUNTB, 0) + 1024 * lua_gc(L, LUA_GCCOUNT, 0);;
 }
 
 
@@ -254,7 +254,7 @@ int LuauVM::do_string(const String &code, const String &chunkname) {
     int status = load_string(code, chunkname);
     if (status != LUA_OK)
         return status;
-    status = lua_pcall(0, LUA_MULTRET, 0);
+    status = lua_pcall(L, 0, LUA_MULTRET, 0);
     return status;
 }
 
@@ -298,9 +298,13 @@ int LuauVM::task_create(lua_State *L) {
     }
     // all args start at 2
     if (isnew) {
-        status = ::lua_resume(thr, L, nargs, &nres);
+        nres = ::lua_gettop(L)-nargs;
+        status = ::lua_resume(thr, L, nargs);
+        nres = lua_gettop(L)-nres;
     } else if (::lua_costatus(L, thr) == LUA_COSUS) {
-        status = ::lua_resume(thr, L, nargs, &nres);
+        nres = ::lua_gettop(L)-nargs;
+        status = ::lua_resume(thr, L, nargs);
+        nres = lua_gettop(L)-nres;
     } else {
         ::lua_pushstring(L, "cannot resume thread");
         ::lua_error(L);
@@ -435,7 +439,7 @@ int LuauVM::task_wait(lua_State* L) {
         ::lua_pushfstring(L, "expected 1 argument, got %d", nargs);
         ::lua_error(L);
     } else if (nargs == 1) {
-        if ((::lua_isnil)(L, 1)) {
+        if (lua_isnil(L, 1)) {
             wait_time = 0;
         } else if (!(::lua_isnumber)(L, 1)) {
             ::lua_pushfstring(L, "duration expected number, got %s", ::lua_typename(L,::lua_type(L,1)));
