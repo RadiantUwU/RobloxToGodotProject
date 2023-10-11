@@ -261,7 +261,7 @@ int LuauVM::do_string(const String &code, const String &chunkname) {
   - process inputs
   - do rendering: can be forced with RenderingServer.force_draw()
   - replication poll
-  - run task_throttled_wait
+  - run task_throttled_spawn,task_throttled_delay,task_throttled_wait
 */
 
 
