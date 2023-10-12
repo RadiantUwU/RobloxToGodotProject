@@ -101,7 +101,7 @@ int metatable_object__eq(lua_State *L) {
 }
 
 int metatable_instance__index(lua_State *L) {
-    
+    return 0;
 }
 
 void LuauVM::create_metatables() {
@@ -204,7 +204,7 @@ static const luaL_Reg lualibs[] = {
     {NULL, NULL},
 };
 
-
+:
 void LuauVM::open_libraries(const Array &libraries) {
     const luaL_Reg* lib = lualibs;
     for (; lib->func; lib++)
@@ -274,6 +274,8 @@ int LuauVM::do_string(const String &code, const String &chunkname) {
 
 
 int LuauVM::task_create(lua_State *L) {
+    LuauVM *node = lua_getnode(L);
+
     int nargs = ::lua_gettop(L);
     lua_State *thr;
     int nres,status;
@@ -309,11 +311,12 @@ int LuauVM::task_create(lua_State *L) {
         ::lua_pushstring(L, "cannot resume thread");
         ::lua_error(L);
     }
-    if (status != LUA_YIELD and status != LUA_BREAK and status != LUA_OK) handle_error(thr);
+    if (status != LUA_YIELD and status != LUA_BREAK and status != LUA_OK) node->handle_error(thr);
     lua_pop(L, nres);
     return 1; // the thread
 }
 int LuauVM::task_defer(lua_State *L) {
+    LuauVM *node = lua_getnode(L);
     int nargs = ::lua_gettop(L);
     bool isnew = false;
     lua_State* thr;
@@ -489,8 +492,11 @@ int LuauVM::task_cancel(lua_State* L) {
     if (status == LUA_CORUN or status == LUA_CONOR) { // running/normal cant be cancelled
         ::lua_pushstring(L, "cannot cancel task");
         ::lua_error(L);
-    } else {
+    } else if (status == LUA_COSUS) {
         ::lua_resetthread(thread);
+    } else {
+        LuauVM *node = ::lua_getnode(L);
+        node->handle_error(thread)
     }
     lua_pop(L, 1);
     return 0;
@@ -503,6 +509,7 @@ void LuauVM::terminate_error(lua_State* thr) {
     //TODO: Print error
     ::lua_resetthread(thr);
 }
+
 bool LuauVM::task_resumption_cycle(bool terminate = false) {
     int k = 1;
     lua_Number curr_os_clock;
@@ -552,7 +559,10 @@ bool LuauVM::task_resumption_cycle(bool terminate = false) {
         ::lua_geti(L, -1, 1);
         bool is_serialized = ::lua_toboolean(L, -1);
         if (is_serialized != is_serialized_res_cycle) {
-            lua_pop(L, 2);
+            lua_getfield(L, LUA_REGISTRYINDEX, "task_defer_delay")
+            lua_pushvalue(L, -3);
+            lua_seti(L, -2, k);
+            lua_pop(L, 3);
             continue;
         } else lua_pop(L, 1);
         lua_Number duration, when_it_started;
@@ -587,7 +597,7 @@ bool LuauVM::task_resumption_cycle(bool terminate = false) {
             lua_pop(L, 2); // pop table and thread
         }
     }
-    lua_pop(L, 2); // pop the table and the key
+    lua_pop(L, 2); // pop the table and key
     ::lua_getfield(L, -1, "task_wait_resume");
     ::lua_newtable(L); 
     ::lua_setfield(L, -3, "task_wait_resume"); // clear table with empty clone
@@ -598,7 +608,10 @@ bool LuauVM::task_resumption_cycle(bool terminate = false) {
         ::lua_geti(L, -1, 1);
         bool is_serialized = ::lua_toboolean(L, -1);
         if (is_serialized != is_serialized_res_cycle) {
-            lua_pop(L, 2);
+            lua_getfield(L, LUA_REGISTRYINDEX, "task_defer_delay")
+            lua_pushvalue(L, -3);
+            lua_seti(L, -2, k);
+            lua_pop(L, 3);
             continue;
         } else lua_pop(L, 1);
         lua_Number duration, when_it_started;
@@ -628,4 +641,13 @@ bool LuauVM::task_resumption_cycle(bool terminate = false) {
             lua_pop(L, 2); // pop table and thread
         }
     }
+    lua_pop(L, 4);
+    int l = 0;
+    ::lua_rawgetfield(L, LUA_REGISTRYINDEX, "task_defer_spawn")
+    l += lua_objlen(L, -1);
+    lua_pop(L, 1);
+    ::lua_rawgetfield(L, LUA_REGISTRYINDEX, "task_defer_delay")
+    l += lua_objlen(L, -1);
+    lua_pop(L, 1);
+    return l != 0
 }

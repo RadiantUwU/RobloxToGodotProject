@@ -33,7 +33,7 @@ private:
 
     void handle_error(lua_State *thread);
     void terminate_error(lua_State *thread);
-    void task_resumption_cycle(bool terminate = false);
+    bool task_resumption_cycle(bool terminate = false);
 protected:
     static void _bind_methods();
     static void _bind_passthrough_methods();
