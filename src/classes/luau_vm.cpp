@@ -496,7 +496,7 @@ int LuauVM::task_cancel(lua_State* L) {
         ::lua_resetthread(thread);
     } else {
         LuauVM *node = ::lua_getnode(L);
-        node->handle_error(thread)
+        node->handle_error(thread);
     }
     lua_pop(L, 1);
     return 0;
@@ -510,7 +510,7 @@ void LuauVM::terminate_error(lua_State* thr) {
     ::lua_resetthread(thr);
 }
 
-bool LuauVM::task_resumption_cycle(bool terminate = false) {
+bool LuauVM::task_resumption_cycle(bool terminate) {
     int k = 1;
     lua_Number curr_os_clock;
     bool is_serialized_res_cycle;
@@ -527,9 +527,11 @@ bool LuauVM::task_resumption_cycle(bool terminate = false) {
     ::lua_setfield(L, -3, "task_defer_spawn"); // clear table with empty clone
     // current stack status: registry, task_defer_spawn_old_tbl
     while (true) {
-        ::lua_geti(L, -1, k++); // get the table or nil
-        if ((::lua_isnil)(L, -1)) break;
-        ::lua_geti(L, -1, 1);
+        ::lua_pushinteger(L, k++);
+        ::lua_rawget(L, -2); // get the table or nil
+        if (lua_isnil(L, -1)) break;
+        ::lua_pushinteger(L, 1);
+        ::lua_rawget(L, -2);
         lua_State* thr = ::lua_tothread(L, -1);
         if (::lua_costatus(L, thr) != LUA_COSUS) {
             lua_pop(L, 2); // thread and the table containing the thread
@@ -538,11 +540,14 @@ bool LuauVM::task_resumption_cycle(bool terminate = false) {
             int tk,status,nargs,nres = 0;
             tk = 2;
             while (true) {
-                ::lua_geti(L, -2-nargs, tk++);
-                if ((::lua_isnil)(L, -1)) break;
+                ::lua_pushinteger(L, tk++);
+                ::lua_geti(L, -3-nargs);
+                if (lua_isnil(L, -1)) break;
                 nargs++;
             }
-            status = ::lua_resume(thr, L, nargs, &nres);
+            nres = ::lua_gettop(L)-nargs;
+            status = ::lua_resume(thr, L, nargs);
+            nres = ::lua_gettop(L)-nres;
             if (status == LUA_ERRERR or status == LUA_ERRMEM or status == LUA_ERRRUN or status == LUA_ERRSYNTAX) handle_error(thr);
             else lua_pop(L, nres);
             lua_pop(L, 2); // pop table and thread
@@ -553,25 +558,31 @@ bool LuauVM::task_resumption_cycle(bool terminate = false) {
     ::lua_newtable(L); 
     ::lua_setfield(L, -3, "task_wait_delay"); // clear table with empty clone
     // current stack status: task_wait_delay_old_tbl
+    k = 1
     while (true) {
-        ::lua_geti(L, -1, k++); // get the table or nil
-        if ((::lua_isnil)(L, -1)) break;
-        ::lua_geti(L, -1, 1);
-        bool is_serialized = ::lua_toboolean(L, -1);
-        if (is_serialized != is_serialized_res_cycle) {
-            lua_getfield(L, LUA_REGISTRYINDEX, "task_defer_delay")
-            lua_pushvalue(L, -3);
-            lua_seti(L, -2, k);
-            lua_pop(L, 3);
+        ::lua_pushinteger(L, k++);
+        ::lua_rawget(L, -2); // get the table or nil
+        if (lua_isnil(L, -1)) break;
+        ::lua_pushinteger(L, 1);
+        ::lua_rawget(L, -2);
+        if (is_serialized != is_serialized_res_cycle) { // DOES NOT WORK YET
+            ::lua_getfield(L, LUA_REGISTRYINDEX, "task_defer_delay")
+            ::lua_objlen(L, -1); // push key for appending
+            ::lua_pushvalue(L, -5); // len, new_task_defer_delay, is_serialized, 
+            ::lua_rawset(L, -3);
+            lua_pop(L, 1);
             continue;
-        } else lua_pop(L, 1);
+        } else lua_pop(L, 1); 
         lua_Number duration, when_it_started;
-        ::lua_geti(L, -1, 2);
-        ::lua_geti(L, -2, 3);
+        ::lua_pushinteger(L, 2);
+        ::lua_rawget(L, -2);
+        ::lua_pushinteger(L, 3);
+        ::lua_rawget(L, -3);
         duration = ::lua_tonumber(L, -1);
         when_it_started = ::lua_tonumber(L, -2);
         lua_pop(L, 2);
-        ::lua_geti(L, -1, 4);
+        ::lua_pushinteger(L, 4);
+        ::lua_rawget(L, -2);
         lua_State* thr = ::lua_tothread(L, -1);
         if (curr_os_clock<duration+when_it_started) {
             lua_pop(L, 2); // the thread and the table
@@ -582,15 +593,18 @@ bool LuauVM::task_resumption_cycle(bool terminate = false) {
             int tk,status,nargs,nres = 0;
             tk = 5;
             while (true) {
-                ::lua_geti(L, -2-nargs, tk++);
-                if ((::lua_isnil)(L, -1)) break;
+                ::lua_pushinteger(L, tk)++;
+                ::lua_geti(L, -3-nargs);
+                if (lua_isnil(L, -1)) break;
                 nargs++;
             }
             if (terminate) {
                 terminate_error(thr);
                 lua_pop(L, nargs);
             } else {
-                status = ::lua_resume(thr, L, nargs, &nres);
+                nres = ::lua_gettop(L)-nargs;
+                status = ::lua_resume(thr, L, nargs);
+                nres = ::lua_gettop(L)-nres;
             }
             if (status == LUA_ERRERR or status == LUA_ERRMEM or status == LUA_ERRRUN or status == LUA_ERRSYNTAX) handle_error(thr);
             else lua_pop(L, nres);
@@ -602,12 +616,15 @@ bool LuauVM::task_resumption_cycle(bool terminate = false) {
     ::lua_newtable(L); 
     ::lua_setfield(L, -3, "task_wait_resume"); // clear table with empty clone
     // current stack status: task_wait_resume_old_tbl
+    k = 1
     while (true) {
-        ::lua_geti(L, -1, k++); // get the table or nil
-        if ((::lua_isnil)(L, -1)) break;
-        ::lua_geti(L, -1, 1);
+        ::lua_pushinteger(L, k++);
+        ::lua_geti(L, -2); // get the table or nil
+        if (::lua_isnil(L, -1)) break;
+        ::lua_pushinteger(L, 1);
+        ::lua_geti(L, -2);
         bool is_serialized = ::lua_toboolean(L, -1);
-        if (is_serialized != is_serialized_res_cycle) {
+        if (is_serialized != is_serialized_res_cycle) { // DOES NOT WORK YET
             lua_getfield(L, LUA_REGISTRYINDEX, "task_defer_delay")
             lua_pushvalue(L, -3);
             lua_seti(L, -2, k);
@@ -615,12 +632,15 @@ bool LuauVM::task_resumption_cycle(bool terminate = false) {
             continue;
         } else lua_pop(L, 1);
         lua_Number duration, when_it_started;
-        ::lua_geti(L, -1, 2);
-        ::lua_geti(L, -2, 3);
+        ::lua_pushinteger(L, 2);
+        ::lua_rawget(L, -2);
+        ::lua_pushinteger(L, 3);
+        ::lua_rawget(L, -3);
         duration = ::lua_tonumber(L, -1);
         when_it_started = ::lua_tonumber(L, -2);
         lua_pop(L, 2);
-        ::lua_geti(L, -1, 4);
+        ::lua_pushinteger(L, 4);
+        ::lua_rawget(L, -2);
         lua_State* thr = ::lua_tothread(L, -1);
         if (curr_os_clock<duration+when_it_started) {
             lua_pop(L, 2); // the thread and the table
@@ -634,7 +654,9 @@ bool LuauVM::task_resumption_cycle(bool terminate = false) {
                 lua_pop(L, nargs);
             } else {
                 ::lua_pushnumber(L, curr_os_clock-when_it_started);
-                status = ::lua_resume(thr, L, 1, &nres);
+                nres = ::lua_gettop(L)-1;
+                status = ::lua_resume(thr, L, 1);
+                nres = ::lua_gettop(L)-nres;
             }
             if (status == LUA_ERRERR or status == LUA_ERRMEM or status == LUA_ERRRUN or status == LUA_ERRSYNTAX) handle_error(thr);
             else lua_pop(L, nres);
