@@ -204,7 +204,7 @@ static const luaL_Reg lualibs[] = {
     {NULL, NULL},
 };
 
-:
+
 void LuauVM::open_libraries(const Array &libraries) {
     const luaL_Reg* lib = lualibs;
     for (; lib->func; lib++)
@@ -541,7 +541,7 @@ bool LuauVM::task_resumption_cycle(bool terminate) {
             tk = 2;
             while (true) {
                 ::lua_pushinteger(L, tk++);
-                ::lua_geti(L, -3-nargs);
+                ::lua_rawget(L, -3-nargs);
                 if (lua_isnil(L, -1)) break;
                 nargs++;
             }
@@ -558,7 +558,7 @@ bool LuauVM::task_resumption_cycle(bool terminate) {
     ::lua_newtable(L); 
     ::lua_setfield(L, -3, "task_wait_delay"); // clear table with empty clone
     // current stack status: task_wait_delay_old_tbl
-    k = 1
+    k = 1;
     while (true) {
         ::lua_pushinteger(L, k++);
         ::lua_rawget(L, -2); // get the table or nil
@@ -616,7 +616,7 @@ bool LuauVM::task_resumption_cycle(bool terminate) {
     ::lua_newtable(L); 
     ::lua_setfield(L, -3, "task_wait_resume"); // clear table with empty clone
     // current stack status: task_wait_resume_old_tbl
-    k = 1
+    k = 1;
     while (true) {
         ::lua_pushinteger(L, k++);
         ::lua_geti(L, -2); // get the table or nil
@@ -665,11 +665,11 @@ bool LuauVM::task_resumption_cycle(bool terminate) {
     }
     lua_pop(L, 4);
     int l = 0;
-    ::lua_rawgetfield(L, LUA_REGISTRYINDEX, "task_defer_spawn")
+    ::lua_rawgetfield(L, LUA_REGISTRYINDEX, "task_defer_spawn");
     l += lua_objlen(L, -1);
     lua_pop(L, 1);
-    ::lua_rawgetfield(L, LUA_REGISTRYINDEX, "task_defer_delay")
-    l += lua_objlen(L, -1);
-    lua_pop(L, 1);
-    return l != 0
+    //::lua_rawgetfield(L, LUA_REGISTRYINDEX, "task_defer_delay");
+    //l += lua_objlen(L, -1);
+    //lua_pop(L, 1);
+    return l != 0;
 }
