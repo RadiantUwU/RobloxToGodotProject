@@ -23,6 +23,17 @@ private:
     lua_State* L;
     void create_metatables();
 
+    static int task_create(lua_State *L);
+    static int task_defer(lua_State *L);
+    static int task_delay(lua_State *L);
+    static int task_desynchronize(lua_State *L);
+    static int task_synchronize(lua_State *L);
+    static int task_wait(lua_State *L);
+    static int task_cancel(lua_State *L);
+
+    void handle_error(lua_State *thread);
+    void terminate_error(lua_State *thread);
+    bool task_resumption_cycle(bool terminate = false);
 protected:
     static void _bind_methods();
     static void _bind_passthrough_methods();
@@ -64,81 +75,8 @@ public:
     #pragma endregion
 
     #pragma region Default
-    void lua_setreadonly(int index, bool enabled);
 
-    void lua_call(int nargs, int nresults);
-    void lua_concat(int n);
-    void lua_createtable(int narr, int nrec);
-    void lua_equal(int index1, int index2);
-    void lua_error();
-    void lua_getfenv(int index);
-    int lua_getfield(int index, const String &key);
-    void (lua_getglobal)(const String &key);
-    bool lua_getmetatable(int index);
-    int lua_gettable(int index);
-    int lua_gettop();
-    void lua_insert(int index);
-    bool (lua_isboolean)(int index);
-    bool (lua_isfunction)(int index);
-    bool (lua_isnil)(int index);
-    bool (lua_isnone)(int index);
-    bool (lua_isnoneornil)(int index);
-    bool lua_isnumber(int index);
-    bool lua_isinteger(int index);
-    bool(lua_isnumberx)(int index);
-    bool lua_isstring(int index);
-    bool (lua_istable)(int index);
-    bool (lua_isthread)(int index);
-    bool lua_isuserdata(int index);
-    bool lua_lessthan(int index1, int index2);
-    void (lua_newtable)();
-    void (lua_newuserdata)(int size);
-    bool lua_next(int index);
-    int64_t lua_objlen(int index);
-    int lua_pcall(int nargs, int nresults, int errfunc);
-    void (lua_pop)(int n);
-    void lua_pushnil();
-    void lua_pushboolean(bool b);
-    void lua_pushinteger(int x);
-    void lua_pushnumber(float x);
-    void lua_pushstring(const String &s);
-    #if LUA_VECTOR_SIZE == 4
-        void lua_pushvector(Vector4 v);
-    #else
-        void lua_pushvector(Vector3 v);
-    #endif
-    void lua_pushvalue(int index);
-    bool lua_rawequal(int index1, int index2);
-    void lua_rawget(int index);
-    void lua_rawgeti(int index, int n);
-    void lua_rawgetfield(int index, const String &key);
-    void lua_rawset(int index);
-    void lua_rawseti(int index, int n);
-    void lua_rawsetfield(int index, const String &key);
-    void lua_remove(int index);
-    void lua_replace(int index);
-    bool lua_setfenv(int index);
-    void lua_setfield(int index, const String &key);
-    void (lua_setglobal)(const String &key);
-    bool lua_setmetatable(int index);
-    void lua_settable(int index);
-    void lua_settop(int index);
-
-    int lua_status();
-    bool lua_toboolean(int index);
-    int64_t (lua_tointeger)(int index);
-    double (lua_tonumber)(int index);
-    String (lua_tostring)(int index);
-    Vector3 lua_tovector(int index);
-    int lua_type(int index);
-    String lua_typename(int type);
-    String lua_getupvalue(int index, int n);
-    String lua_setupvalue(int index, int n);
-    int lua_gc(int what, int data);
-
-    int lua_ref(int t);
-    void lua_unref(int ref);
-    int (lua_getref)(int ref);
+    String (luaL_tostring)(int index);
 
     #pragma endregion
 

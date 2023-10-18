@@ -3,9 +3,6 @@
 
 class Instance {
 public:
-    Instance();
-    ~Instance();
-
     
 };
 #endif
