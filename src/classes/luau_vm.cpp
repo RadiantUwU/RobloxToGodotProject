@@ -626,8 +626,9 @@ bool LuauVM::task_resumption_cycle(bool terminate) {
         bool is_serialized = ::lua_toboolean(L, -1);
         if (is_serialized != is_serialized_res_cycle) { // DOES NOT WORK YET
             lua_getfield(L, LUA_REGISTRYINDEX, "task_defer_delay");
-            lua_pushvalue(L, -3);
-            lua_seti(L, -2, k);
+            lua_pushinteger(L, k);
+            lua_pushvalue(L, -4);
+            lua_rawset(L, -3);
             lua_pop(L, 3);
             continue;
         } else lua_pop(L, 1);
