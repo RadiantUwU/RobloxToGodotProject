@@ -33,13 +33,6 @@ jobs:
             runner: "windows-latest"
             should-run: true
 
-          - name: Windows Editor LuaJIT (target=editor,luaapi_luaver=jit)
-            cache-name: windows-editor-luajit
-            artifact-name: windows-editor-luajit
-            build-options: "target=editor luaapi_luaver=jit debug_symbols=no"
-            runner: "windows-latest"
-            should-run: ${{ inputs.fullbuild }}
-
           - name: Windows Template (target=template_release,arch=x86_64)
             cache-name: windows-template
             artifact-name: export-templates
@@ -51,20 +44,6 @@ jobs:
             cache-name: windows-template-debug
             artifact-name: export-templates
             build-options: "target=template_debug arch=x86_64"
-            runner: "ubuntu-20.04"
-            should-run: ${{ inputs.fullbuild }}
-          
-          - name: Windows Template (target=template_release,arch=x86_32)
-            cache-name: windows-template
-            artifact-name: export-templates
-            build-options: "target=template_release arch=x86_32"
-            runner: "ubuntu-20.04"
-            should-run: ${{ inputs.fullbuild }}
-
-          - name: Windows Template Debug (target=template_debug,arch=x86_32)
-            cache-name: windows-template-debug
-            artifact-name: export-templates
-            build-options: "target=template_debug arch=x86_32"
             runner: "ubuntu-20.04"
             should-run: ${{ inputs.fullbuild }}
         exclude:
