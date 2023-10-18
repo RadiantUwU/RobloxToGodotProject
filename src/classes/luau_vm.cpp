@@ -565,8 +565,8 @@ bool LuauVM::task_resumption_cycle(bool terminate) {
         if (lua_isnil(L, -1)) break;
         ::lua_pushinteger(L, 1);
         ::lua_rawget(L, -2);
-        if (is_serialized != is_serialized_res_cycle) { // DOES NOT WORK YET
-            ::lua_getfield(L, LUA_REGISTRYINDEX, "task_defer_delay")
+        if (true != is_serialized_res_cycle) { // DOES NOT WORK YET
+            ::lua_getfield(L, LUA_REGISTRYINDEX, "task_defer_delay");
             ::lua_objlen(L, -1); // push key for appending
             ::lua_pushvalue(L, -5); // len, new_task_defer_delay, is_serialized, 
             ::lua_rawset(L, -3);
@@ -593,8 +593,8 @@ bool LuauVM::task_resumption_cycle(bool terminate) {
             int tk,status,nargs,nres = 0;
             tk = 5;
             while (true) {
-                ::lua_pushinteger(L, tk)++;
-                ::lua_geti(L, -3-nargs);
+                ::lua_pushinteger(L, tk++);
+                ::lua_rawget(L, -3-nargs);
                 if (lua_isnil(L, -1)) break;
                 nargs++;
             }
@@ -619,13 +619,13 @@ bool LuauVM::task_resumption_cycle(bool terminate) {
     k = 1;
     while (true) {
         ::lua_pushinteger(L, k++);
-        ::lua_geti(L, -2); // get the table or nil
-        if (::lua_isnil(L, -1)) break;
+        ::lua_rawget(L, -2); // get the table or nil
+        if (lua_isnil(L, -1)) break;
         ::lua_pushinteger(L, 1);
-        ::lua_geti(L, -2);
+        ::lua_rawget(L, -2);
         bool is_serialized = ::lua_toboolean(L, -1);
         if (is_serialized != is_serialized_res_cycle) { // DOES NOT WORK YET
-            lua_getfield(L, LUA_REGISTRYINDEX, "task_defer_delay")
+            lua_getfield(L, LUA_REGISTRYINDEX, "task_defer_delay");
             lua_pushvalue(L, -3);
             lua_seti(L, -2, k);
             lua_pop(L, 3);
@@ -651,7 +651,6 @@ bool LuauVM::task_resumption_cycle(bool terminate) {
             int tk,status,nres = 0;
             if (terminate) {
                 terminate_error(thr);
-                lua_pop(L, nargs);
             } else {
                 ::lua_pushnumber(L, curr_os_clock-when_it_started);
                 nres = ::lua_gettop(L)-1;
