@@ -1,13 +1,17 @@
-#include <godot_cpp/variant/builtin_types.hpp>
-#include <godot_cpp/variant/variant.hpp>
-
 #ifndef RBLX_INSTANCE
 #define RBLX_INSTANCE
 
+#include <godot_cpp/variant/builtin_types.hpp>
+#include <godot_cpp/variant/variant.hpp>
+#include <godot_cpp/templates/vector.hpp>
+
+namespace godot {
+
 class Instance {
 protected:
-    std::vector<Instance*> children;
+    Vector<Instance*> children;
     Instance* parent;
+    int ref = LUA_NOREF;
 public:
     Instance();
     virtual ~Instance();
@@ -35,6 +39,9 @@ public:
     Instance* FindFirstDescendant(String name);
     Instance* GetActor(); // return null, not implemented yet
     Variant GetAttribute(String name);
-    
+        
 };
+
+}
+
 #endif

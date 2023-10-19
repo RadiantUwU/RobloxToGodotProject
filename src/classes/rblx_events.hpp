@@ -4,10 +4,25 @@
 #include <godot_cpp/variant/variant.hpp>
 #include <lua.h>
 #include <lualib.h>
+#include <godot_cpp/templates/vector.hpp>
+
+namespace godot {
+
+class RBXScriptConnection final {
+    lua_State *L;
+    RBXScriptSignal* signal;
+    RBXScriptConnection();
+public:
+    ~RBXScriptConnection();
+    bool isConnected();
+    void Disconnect();
+};
 
 class RBXScriptSignal final {
     lua_State *L;
     int ref;
+    friend class RBXScriptConnection;
+    void Disconnect()
 public:
     RBXScriptSignal();
     ~RBXScriptSignal();
@@ -21,5 +36,7 @@ public:
     void Connect(int (*lua_cfunc)(lua_State* L));
     void Wait();
 };
+
+}
 
 #endif
