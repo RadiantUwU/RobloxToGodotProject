@@ -5,13 +5,17 @@
 #include <lua.h>
 #include <lualib.h>
 #include <godot_cpp/templates/vector.hpp>
+#include "rblx_main.hpp"
 
 namespace godot {
+
+class RBXScriptSignal;
 
 class RBXScriptConnection final {
     lua_State *L;
     RBXScriptSignal* signal;
     RBXScriptConnection();
+    friend class RBXScriptSignal;
 public:
     ~RBXScriptConnection();
     bool isConnected();
@@ -22,10 +26,13 @@ class RBXScriptSignal final {
     lua_State *L;
     int ref;
     friend class RBXScriptConnection;
+    friend class Instance;
+    friend class RobloxVMInstance;
     void Disconnect()
 public:
     RBXScriptSignal();
     ~RBXScriptSignal();
+    RBXScriptSignal(RBXScriptSignal&) = delete; // deny copying
 
     static int lua_connect(lua_State* L); // signal instance, function - return RBXScriptConnection
     static int lua_once(lua_State* L); // signal instance, function - return RBXScriptConnection
