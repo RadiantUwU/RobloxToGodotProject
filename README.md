@@ -1,4 +1,5 @@
 # GDLuau
+
 A GDExtension that adds [Luau](https://luau-lang.org) C/C++ API bindings to GDScript
 *(+ some extras)*
 
@@ -31,3 +32,7 @@ Compiling
 
 ---------------
 [![lua logo](https://luau-lang.org/assets/images/luau.png)](https://luau-lang.org)<br />
+
+**Special thanks**
+------
+https://github.com/Manonox/GDLuau
