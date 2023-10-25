@@ -104,7 +104,7 @@ public:
     inline void push_object(const char* str, size_t len) { ::lua_pushlstring(L, str, len); }
     inline void push_object(lua_CFunction f) { ::lua_pushcfunction(L, f); }
     inline void push_object(LuaObject obj) { obj.get(ls); }
-    inline void push_object(RBXVariant v);
+    inline void push_object(RBXVariant& v);
     inline void push_object(int idx) { ::lua_pushnil(L); ::lua_insert(L, idx); }
     inline void push_object(bool b, int idx) { ::lua_pushboolean(L, b); ::lua_insert(L, idx); }
     inline void push_object(long long integer, int idx) { ::lua_pushinteger(L, integer); ::lua_insert(L, idx); }
@@ -114,7 +114,7 @@ public:
     inline void push_object(const char* str, size_t len, int idx) { ::lua_pushlstring(L, str, len); ::lua_insert(L, idx); }
     inline void push_object(LuaObject obj, int idx) { obj.get(ls); ::lua_insert(L, idx); }
     inline void push_object(lua_CFunction f, int idx) { ::lua_pushcfunction(L, f); ::lua_insert(L, idx); }
-    inline void push_object(RBXVariant v, int idx);
+    inline void push_object(RBXVariant& v, int idx);
     inline RBXVariant to_object();
     inline RBXVariant to_object(int idx);
     inline RBXVariant as_object();
@@ -348,7 +348,7 @@ private:
         void* ptr;
     };
 public:
-    enum Type {
+    enum class Type {
         RBXVARIANT_NIL,
         RBXVARIANT_BOOL,
         RBXVARIANT_INT,
@@ -438,11 +438,21 @@ public:
         default: return NAN;
         }
     }
-    operator 
     operator LuaObject() {
         return obj;
     }
-    operator const char 
+    operator LuaObject&() {
+        return obj;
+    }
+    int get_slen() {
+        return strl;
+    }
+    const char *get_str() {
+        return str;
+    }
+    operator void*() {
+        return ptr;
+    }
 };
 
 class RobloxVMInstance final {

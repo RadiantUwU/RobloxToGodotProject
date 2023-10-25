@@ -156,4 +156,85 @@ void LuaObject::get(luau_State *to) {
     // value is pushed, origin on auto-clear
 }
 
+void luau_context::push_object(RBXVariant& v) {
+    switch (v.type) {
+    case RBXVariant::Type::RBXVARIANT_NIL:
+        ::lua_pushnil(L);
+        break;
+    case RBXVariant::Type::RBXVARIANT_BOOL:
+        ::lua_pushboolean(L, (bool)v);
+        break;
+    case RBXVariant::Type::RBXVARIANT_INT:
+        ::lua_pushinteger(L, (int)v);
+        break;
+    case RBXVariant::Type::RBXVARIANT_NUM:
+        ::lua_pushnumber(L, (double)v);
+        break;
+    case RBXVariant::Type::RBXVARIANT_OBJ:
+        push_object(L, (LuaObject&)v);
+        break;
+    case RBXVariant::Type::RBXVARIANT_STR:
+        ::lua_pushlstring(L, v.get_str(), v.get_slen());
+        break;
+    case RBXVariant::Type::RBXVARIANT_PTR:
+        ::lua_pushlightuserdata(L, (void*)v);
+        break;
+    default:
+        break;
+    }
+}
+void luau_context::push_object(RBXVariant& v, int idx) {
+    switch (v.type) {
+    case RBXVariant::Type::RBXVARIANT_NIL:
+        ::lua_pushnil(L);
+        break;
+    case RBXVariant::Type::RBXVARIANT_BOOL:
+        ::lua_pushboolean(L, (bool)v);
+        break;
+    case RBXVariant::Type::RBXVARIANT_INT:
+        ::lua_pushinteger(L, (int)v);
+        break;
+    case RBXVariant::Type::RBXVARIANT_NUM:
+        ::lua_pushnumber(L, (double)v);
+        break;
+    case RBXVariant::Type::RBXVARIANT_OBJ:
+        push_object(L, (LuaObject&)v);
+        break;
+    case RBXVariant::Type::RBXVARIANT_STR:
+        ::lua_pushlstring(L, v.get_str(), v.get_slen());
+        break;
+    case RBXVariant::Type::RBXVARIANT_PTR:
+        ::lua_pushlightuserdata(L, (void*)v);
+        break;
+    default:
+        break;
+    }
+    ::lua_insert(L, idx);
+}
+RBXVariant luau_context::as_object() {
+    RBXVariant v;
+    switch (get_type(-1)) {
+    case LUA_TNIL:
+        v = RBXVariant();
+        break;
+    case LUA_TNUMBER:
+        v = RBXVariant(::lua_tonumber(L, -1));
+        break;
+    case LUA_TBOOLEAN:
+        v = RBXVariant((bool)(::lua_toboolean(L, -1)));
+        break;
+    case LUA_TSTRING: {
+            const char *s;
+            int l;
+            s = ::lua_tolstring(L, -1, &l);
+            v = RBXVariant(s, l);
+        }
+        break;
+    case LUA_TLIGHTUSERDATA:
+        v = RBXVariant(::lua_tolightuserdata(L, -1));
+        break;
+    case LUA_
+    }
+}
+
 }
