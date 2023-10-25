@@ -81,17 +81,79 @@ void LuaObject::get(luau_State *to) {
                         break;
                     case LUA_TTABLE:
                         for (int tbl_idx : to->tables_in_conversion) {
-                            origin.push_value(tbl_idx);
-                            
+                            if (origin.rawequal(-1,tbl_idx)) {
+                                to_.pop_stack(1); // pop the key
+                                continue; // delete luau_context upon reloading loop. causes a stack pop in origin
+                            }
+                            to_.push_object(origin.to_object(-1));
+                            to_.set();
+                            break;
                         }
                     case LUA_TUSERDATA:
                         // TODO: create a proxy object 
+                        to_.pop_stack(1); // pop the key
+                        continue; // delete luau_context upon reloading loop. causes a stack pop in origin
+                    case LUA_TFUNCTION:
+                        if (iter.is_cfunction(-1)) {
+                            to_.push_object(origin.as_cfunc());
+                            to_.set();
+                        } else {
+                            to_.pop_stack(1);
+                            continue;
+                        }
                         break;
                     }
                 }
-                
+            } else {
+                origin.pop_stack(1);
+                int key = 0;
+                int lastkey = 0;
+                while (true) {
+                    luau_context iter = ls;
+                    key = iter.rawiter(-1, key);
+                    if (key == -1) break;
+                    if (key != lastkey+1) break;
+                    if (!iter.is_type(-2, LUA_TNUMBER)) continue; // automatic popping of the key and value
+                    to_.push_object(origin.to_object(-2)); // pop key leaving only value on stack
+                    switch (origin.get_type(-1)) {
+                    case LUA_TNUMBER:
+                    case LUA_TBOOLEAN:
+                    case LUA_TLIGHTUSERDATA:
+                    case LUA_TSTRING:
+                    case LUA_TNIL: // theoretically impossible because key wouldnt exist but have it as a case anyway
+                        to_.push_object(origin.to_object(-1)); // let auto do its thing
+                        to_.set(); //
+                        break;
+                    case LUA_TTABLE:
+                        for (int tbl_idx : to->tables_in_conversion) {
+                            if (origin.rawequal(-1,tbl_idx)) {
+                                to_.pop_stack(1); // pop the key
+                                continue; // delete luau_context upon reloading loop. causes a stack pop in origin
+                            }
+                            to_.push_object(origin.to_object(-1));
+                            to_.set();
+                            break;
+                        }
+                    case LUA_TUSERDATA:
+                        // TODO: create a proxy object 
+                        to_.pop_stack(1); // pop the key
+                        continue; // delete luau_context upon reloading loop. causes a stack pop in origin
+                    case LUA_TFUNCTION:
+                        if (iter.is_cfunction(-1)) {
+                            to_.push_object(origin.as_cfunc());
+                            to_.set();
+                        } else {
+                            to_.pop_stack(1);
+                            continue;
+                        }
+                        break;
+                    }
+                }
             }
+            ls->tables_in_conversion.remove_at(-1);
+            break;
     }
+    // value is pushed, origin on auto-clear
 }
 
 }

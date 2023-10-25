@@ -331,7 +331,7 @@ public:
     inline void move_args(lua_State *to, int amount) {::lua_xmove(L, to, amount);}
     inline void copy_arg(lua_State *to, int idx) {::lua_xpush(L, to, idx); }
 
-    
+    inline bool rawequal(int idx1, int idx2) { return ::lua_rawequal(L, idx1, idx2); }
 };
 
 struct RBXVariant final {
