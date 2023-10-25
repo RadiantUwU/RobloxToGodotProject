@@ -35,6 +35,7 @@ class luau_State final {
     lua_State *L;
     RobloxVMInstance *vm;
     ::std::recursive_mutex mtx;
+    Vector<int> tables_in_conversion;
     friend class LuaObject;
     friend class luau_context;
 public:
@@ -116,8 +117,11 @@ public:
     inline void push_object(RBXVariant v, int idx);
     inline RBXVariant to_object();
     inline RBXVariant to_object(int idx);
+    inline RBXVariant as_object();
+    inline RBXVariant as_object(int idx);
     inline lua_State* as_thread(int idx = -1) {return ::lua_tothread(L, idx); }
     inline lua_CFunction as_cfunc(int idx = -1) {return ::lua_tocfunction(L, idx); }
+    inline int as_absolute_stack_index(int idx = -1) {return (idx > 0) ? idx : ::lua_gettop(L)+1-idx;}
 
     inline int get_type(int idx) { return ::lua_type(L, idx); }
     inline const char* get_typename(int idx) { return ::lua_typename(L, ::lua_type(L, idx)); }
@@ -326,6 +330,8 @@ public:
 
     inline void move_args(lua_State *to, int amount) {::lua_xmove(L, to, amount);}
     inline void copy_arg(lua_State *to, int idx) {::lua_xpush(L, to, idx); }
+
+    
 };
 
 struct RBXVariant final {
