@@ -17,14 +17,21 @@ luau_State::luau_State(RobloxVMInstance *VM) {
 LuaObject::LuaObject(luau_State *L) {
     luau_context state = L;
     ref = state.new_ref(-1);
+    state.pop_stack(1);
     ls = L;
-    // stack is auto resized by luau_context
 }
 LuaObject::LuaObject(luau_State *L, int idx) {
     luau_context state = L;
     ref = state.new_ref(idx);
+    state.remove_stack(idx);
     ls = L;
-    // stack is auto resized by luau_context
+}
+LuaObject::LuaObject(LuaObject& o) {
+    ls = o.ls;
+    luau_context state = ls;
+    state.push_ref(o.ref);
+    ref = state.new_ref(-1);
+    // auto resize stack
 }
 LuaObject::~LuaObject() {
     luau_context origin = ls;
@@ -233,8 +240,53 @@ RBXVariant luau_context::as_object() {
     case LUA_TLIGHTUSERDATA:
         v = RBXVariant(::lua_tolightuserdata(L, -1));
         break;
-    case LUA_
+    case LUA_TTABLE:
+    case LUA_TUSERDATA:
+        ::lua_pushvalue(L, -1);
+        v = RBXVariant(LuaObject(ls));
+        break;
     }
+    return v
+}
+RBXVariant luau_context::as_object(int idx) {
+    RBXVariant v;
+    switch (get_type(idx)) {
+    case LUA_TNIL:
+        v = RBXVariant();
+        break;
+    case LUA_TNUMBER:
+        v = RBXVariant(::lua_tonumber(L, idx));
+        break;
+    case LUA_TBOOLEAN:
+        v = RBXVariant((bool)(::lua_toboolean(L, idx)));
+        break;
+    case LUA_TSTRING: {
+            const char *s;
+            int l;
+            s = ::lua_tolstring(L, idx, &l);
+            v = RBXVariant(s, l);
+        }
+        break;
+    case LUA_TLIGHTUSERDATA:
+        v = RBXVariant(::lua_tolightuserdata(L, idx));
+        break;
+    case LUA_TTABLE:
+    case LUA_TUSERDATA:
+        ::lua_pushvalue(L, idx);
+        v = RBXVariant(LuaObject(ls));
+        break;
+    }
+    return v
+}
+RBXVariant luau_context::to_object() {
+    RBXVariant v = as_object();
+    pop_stack(1);
+    return v
+}
+RBXVariant luau_context::to_object(int idx) {
+    RBXVariant v = as_object(idx);
+    remove_stack(idx);
+    return v
 }
 
 }

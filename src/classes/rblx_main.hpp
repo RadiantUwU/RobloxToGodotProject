@@ -61,7 +61,7 @@ public:
     luau_context(lua_State *s) {
         L = s;
         getregistry("LUAU_STATE");
-        ls = (luau_State*)lua_touserdata(L, -1);
+        ls = (luau_State*)lua_tolightuserdata(L, -1);
         lua_pop(L, 1);
         ls->mtx.lock();
         last_stack_size = lua_gettop(L);
@@ -130,6 +130,10 @@ public:
     inline bool is_cfunction(int idx) { return lua_iscfunction(L, idx); }
 
     inline bool has_argument(int argn) { return !lua_isnone(L, argn); }
+    inline void assert_has_argument(int argn, const char* argname) {
+        if (lua_isnone(L, argn)) 
+            errorf("missing argument #%d to '%s' (any expected)", argn, argname);
+    }
     inline void assert_type_argument(int argn, const char* argname, int type) {
         if (lua_isnone(L, argn)) 
             errorf("missing argument #%d to '%s' (%s expected)", argn, argname, lua_typename(L, type));
@@ -144,6 +148,7 @@ public:
     }
 
     inline void pop_stack(int n) { lua_pop(L, n); }
+    inline void remove_stack(int idx) { lua_remove(L, idx); }
     inline int get_stack_size() { return lua_gettop(L); }
     inline void push_value(int idx) { lua_pushvalue(L, idx); }
     inline void clear_stack() { if (last_stack_size < 0) return; size_t s = last_stack_size - lua_gettop(L); if (s>0) lua_pop(L, s);}
