@@ -1,7 +1,9 @@
 #ifndef RBLX_MAIN
 #define RBLX_MAIN
 
+#include <cstddef>
 #include <cstring>
+#include <type_traits>
 #include <godot_cpp/templates/vector.hpp>
 #include <godot_cpp/variant/variant.hpp>
 #include <godot_cpp/variant/utility_functions.hpp>
@@ -184,6 +186,7 @@ public:
         last_stack_size = -1;
     }
     inline void push_object() { ::lua_pushnil(L); }
+    inline void push_object(std::nullptr_t) { ::lua_pushnil(L); }
     inline void push_object(bool b) { ::lua_pushboolean(L, b); }
     inline void push_object(long long integer) { ::lua_pushinteger(L, integer); }
     inline void push_object(double number) { ::lua_pushnumber(L, number); }
@@ -203,6 +206,10 @@ public:
     inline void push_object(LuaObject obj, int idx) { obj.get(ls); ::lua_insert(L, idx); }
     inline void push_object(lua_CFunction f, int idx) { ::lua_pushcfunction(L, f); ::lua_insert(L, idx); }
     inline void push_object(RBXVariant& v, int idx);
+    template <typename T, typename... Others>
+    inline int push_objects(T o, Others... others) { push_object(o); return push_objects(others...)+1; }
+    template <typename T>
+    inline int push_objects(T o) { push_object(o); return 1; }
     inline void push_current_thread() { ::lua_pushthread(L); }
     inline RBXVariant to_object();
     inline RBXVariant to_object(int idx);
@@ -221,16 +228,31 @@ public:
     inline const char* as_typename(int type) { return ::lua_typename(L, type); }
     inline const char* as_usertypename(int utype) { return user_types[utype]; }
     inline bool is_type(int idx, int type) { return ::lua_type(L, idx) == type; }
+    inline bool is_utype(int idx, int utype) { return (is_type(idx,LUA_TUSERDATA)) ? get_userdata_type(idx) == utype : false; }
     inline bool is_cfunction(int idx) { return lua_iscfunction(L, idx); }
 
     inline void insert_into(int idx) { return ::lua_insert(L, idx); }
     
     template <typename T, typename... Args>
     inline T* new_userdata(int utype, Args... args) {
-        T* p = new (::lua_newuserdatatagged(L, sizeof(T), utype)) T(args...)
+        T* p = new (::lua_newuserdatatagged(L, sizeof(T), utype)) T(args...);
         rawget(LUA_REGISTRYINDEX,"USERDATA_METATABLES");
         rawget(-1,utype);
         setmetatable(-3);
+        pop_stack(1);
+        return p;
+    }
+    template <typename T>
+    inline T* new_instance(RobloxVMInstance vm) {
+        static_assert(::std::is_base_of<Instance, T>::value, "To pass a type to new_instance you must pass a class that derives from Instance!");
+        T* p = new (::lua_newuserdatatagged(L, sizeof(T), UD_TINSTANCE)) T(vm);
+        rawget(LUA_REGISTRYINDEX,"USERDATA_METATABLES");
+        rawget(-1,utype);
+        setmetatable(-3);
+        pop_stack(1);
+        rawget(LUA_REGISTRYINDEX,"INSTANCE_REFS");
+        push_value(-2);
+        rawset(-2,(size_t)(void*)p);
         pop_stack(1);
         return p;
     }

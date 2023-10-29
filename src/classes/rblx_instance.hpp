@@ -5,36 +5,51 @@
 #include <godot_cpp/templates/vector.hpp>
 #include <godot_cpp/templates/hash_map.hpp>
 
+#include "rblx_basic_types.hpp"
 #include "rblx_main.hpp"
 #include "rblx_events.hpp"
 
 namespace godot {
+
+enum InstanceType {
+    T_INSTANCE,
+    T_PVINSTANCE,
+    T_MODEL,
+    T_ACTOR,
+    T_LUASOURCECONTAINER,
+    T_BASESCRIPT,
+    T_DATAMODEL,
+    T_SCRIPT,
+    T_BASEPART,
+    //...
+};
 
 class Instance {
 protected:
     friend class RobloxVMInstance;
     Vector<Instance*> children;
     Vector<String> tags;
-    HashMap<String, RBXScriptSignal> attribute_signals;
-    HashMap<String, RBXScriptSignal> property_signals;
-    Instance* parent;
-    String Name;
-    int network_id;
-    int ref = LUA_NOREF;
+    HashMap<String, RBXScriptSignal*> attribute_signals;
+    HashMap<String, RBXScriptSignal*> property_signals;
+    Vector<long long> refs;
+    Instance* parent;// Properties
+    LuaString Name;// Propertiesaa
+    long long network_id;
     RobloxVMInstance *VM;
+    bool parent_locked = false;
 public:
     Instance(RobloxVMInstance *VM);
     virtual ~Instance();
 
     // PROPERTIES
     bool Archivable = true;
-    String getName();
-    void setName(String newname);
+    LuaString getName();
+    void setName(LuaString newname);
     Instance* getParent();
     void setParent(Instance* newparent);
     volatile const char* const ClassName = "Instance";
+    volatile const InstanceType Type = T_INSTANCE; // Internal
 
-    virtual bool lua_matching_function_signature(const char* name);
     virtual int lua_get(lua_State *L);
     virtual int lua_set(lua_State *L);
 
@@ -67,6 +82,9 @@ public:
     static int RemoveTag(lua_State *L);
     static int SetAttribute(lua_State *L);
     static int WaitForChild(lua_State *L);
+
+    void destroy();// Internal methods
+    void destroy_children();// Internal methods
 
     // SIGNALS
     RBXScriptSignal *AncestryChanged;

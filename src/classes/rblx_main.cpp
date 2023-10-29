@@ -2,16 +2,17 @@
 #include <lualib.h>
 #include "rblx_main.hpp"
 #include "rblx_instance.hpp"
+#include "rblx_events.hpp"
 
 namespace godot {
 
 luau_State::luau_State(RobloxVMInstance *VM) {
     vm = VM;
     L = vm->create_lua_state();
-    ::lua_pushlightuserdata(L, VM);
-    ::lua_rawsetfield(L, LUA_REGISTRYINDEX, "ROBLOX_VM");
     ::lua_pushlightuserdata(L, this);
     ::lua_rawsetfield(L, LUA_REGISTRYINDEX, "LUAU_STATE");
+    ::lua_newtable(L);
+    ::lua_rawsetfield(L, LUA_REGISTRYINDEX, "USERDATA_METATABLES");
 }
 
 LuaObject::LuaObject(luau_State *L) {
@@ -287,6 +288,45 @@ RBXVariant luau_context::to_object(int idx) {
     RBXVariant v = as_object(idx);
     remove_stack(idx);
     return v
+}
+
+luau_State::luau_State(RobloxVMInstance* vm) {
+    this->vm = vm;
+    this->L = vm->create_lua_state();
+}
+luau_State::~luau_State() {
+    ::lua_close(this->L);
+}
+
+void RobloxVMInstance::register_types(lua_State *L) {
+    luau_context ctx = L;
+    ctx.push_object();
+    ctx.rawset(LUA_GLOBALSINDEX,"vector"); // deyeet
+
+    ctx.newmetatable_type(ctx.UD_TRBXSCRIPTSIGNAL);
+    ctx.set_dtor(ctx.UD_TRBXSCRIPTSIGNAL, RBXScriptSignal::lua_destroy);
+    ctx.push_object(RBXScriptSignal::lua_get);
+    ctx.rawset(-2, "__index");
+    ctx.pop_stack(1);
+
+    ctx.newmetatable_type(ctx.UD_TRBXSCRIPTCONNECTION);
+    ctx.push_object(RBXScriptConnection::lua_get);
+    ctx.rawset(-2, "__index");
+    ctx.pop_stack(1);
+
+    ls.new_table();
+    ls.new_table();
+    ls.push_object("v");
+    ls.rawset(-2,"__mode");
+    ls.setmetatable(-2);
+    ls.rawset(LUA_REGISTRYINDEX,"INSTANCE_REFS");
+}
+RobloxVMInstance::RobloxVMInstance() {
+    main_synchronized = new luau_State(this);
+    register_types(main_synchronized->get_state());
+}
+RobloxVMInstance::~RobloxVMInstance() {
+    delete main_synchronized;
 }
 
 }

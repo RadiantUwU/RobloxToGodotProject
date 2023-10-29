@@ -14,14 +14,15 @@ class RBXScriptSignal;
 class RBXScriptConnection final {
     RBXScriptSignal* signal;
     int ref;
-    RBXScriptConnection();
+    RBXScriptConnection() {};
     friend class RBXScriptSignal;
 public:
-    ~RBXScriptConnection();
+    ~RBXScriptConnection() {};
     bool isConnected();
     void Disconnect();
     static int lua_isConnected(lua_State *L);
     static int lua_Disconnect(lua_State *L);
+    static int lua_get(lua_State *L);
 };
 
 class RBXScriptSignal final {
@@ -45,6 +46,19 @@ public:
     static int lua_onfire(lua_State *L);
     static int lua_onfire_autodisconnect(lua_State *L);
     static int lua_resume_onfire(lua_State *L);
+    static int lua_get(lua_State *L);
+    static void lua_destroy(lua_State *L, void* ud);
+    template <typename... Args>
+    void Fire(Args... args) {
+        luau_context ctx = L;
+        ctx.push_object(lua_fire);
+        ctx.call(ctx.push_objects(args...), 0);
+    }
+    void Fire() {
+        luau_context ctx = L;
+        ctx.push_object(lua_fire);
+        ctx.call(0, 0);
+    }
 };
 
 }

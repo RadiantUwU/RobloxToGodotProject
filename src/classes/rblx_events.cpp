@@ -1,6 +1,8 @@
 #include "rblx_events.hpp"
 #include "rblx_main.hpp"
 #include <lua.h>
+#include <cstddef>
+#include <cstring>
 
 namespace godot {
 
@@ -129,6 +131,31 @@ int RBXScriptSignal::lua_resume_onfire(lua_State *L) {
     fn.resume(args,0,0);
     return 0;
 }
+int RBXScriptSignal::lua_get(lua_State *L) {
+    luau_function_context fn = L;
+    fn.assert_usertype_argument(1, "self", fn.UD_TRBXSCRIPTSIGNAL);
+    fn.assert_type_argument(2, "key", LUA_TSTRING);
+    RBXVariant v = fn.to_object();
+    const char *s = v.get_str();
+    if (strcmp(s,"Connect") == 0) {
+        fn.push_object(RBXScriptSignal::lua_connect);
+        return 1;
+    } else if (strcmp(s, "Once") == 0) {
+        fn.push_object(RBXScriptSignal::lua_once);
+        return 1;
+    } else if (strcmp(s, "ConnectParallel") == 0) {
+        fn.push_object(RBXScriptSignal::lua_connectparallel);
+        return 1;
+    } else if (strcmp(s, "Wait") == 0) {
+        fn.push_object(RBXScriptSignal::lua_wait);
+        return 1;
+    }
+    fn.error("invalid key provided to RBXScriptSignal.__index()");
+}
+void RBXScriptSignal::lua_destroy(lua_State *L, void *ud) {
+    RBXScriptSignal* signal = (RBXScriptSignal*)ud;
+    signal->~RBXScriptSignal();
+}
 
 bool RBXScriptConnection::isConnected() {
     luau_context ls = signal->L;
@@ -154,6 +181,21 @@ int RBXScriptConnection::lua_Disconnect(lua_State *L) {
     RBXScriptConnection* conn = fn.as_userdata<RBXScriptConnection>(-1);
     conn->Disconnect();
     return 0;
+}
+int RBXScriptConnection::lua_get(lua_State *L) {
+    luau_function_context fn = L;
+    fn.assert_usertype_argument(1, "self", fn.UD_TRBXSCRIPTSIGNAL);
+    fn.assert_type_argument(2, "key", LUA_TSTRING);
+    RBXVariant v = fn.to_object();
+    const char *s = v.get_str();
+    if (strcmp(s,"isConnected") == 0) {
+        fn.push_object(RBXScriptConnection::lua_isConnected);
+        return 1;
+    } else if (strcmp(s, "Disconnect") == 0) {
+        fn.push_object(RBXScriptConnection::lua_Disconnect);
+        return 1;
+    }
+    fn.error("invalid key provided to RBXScriptConnection.__index()");
 }
 
 };
