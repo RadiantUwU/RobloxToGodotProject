@@ -18,6 +18,8 @@ int Instance::new_instance(lua_State *L) {
         fn.new_instance<Instance>(vm);
         return 1;
     }
+    fn.errorf("Invalid class name provided to ClassName '%s'",s.s);
+    return 0;
 }
 
 }
