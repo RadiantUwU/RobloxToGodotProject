@@ -359,7 +359,7 @@ void RobloxVMInstance::register_genv(lua_State *L) {
 RobloxVMInstance::RobloxVMInstance(lua_State *main) {
     main_synchronized = new luau_State(this, main);
     register_types(main);
-    register_genv(L);
+    register_genv(main);
 }
 RobloxVMInstance::~RobloxVMInstance() {
     delete main_synchronized;
