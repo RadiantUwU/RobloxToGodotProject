@@ -218,7 +218,7 @@ struct ColorSequence {
         Keypoints.append({0,c0}); Keypoints.append({1,c1});
     }
     ColorSequence(Vector<ColorSequenceKeypoint> keypoints) {
-        Keypoints.duplicate(keypoints);
+        Keypoint = keypoints;
     }
 };
 
