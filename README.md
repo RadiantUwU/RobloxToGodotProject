@@ -1,37 +1,24 @@
-# GDLuau
+# The Roblox To Godot Project
 
-A GDExtension that adds [Luau](https://luau-lang.org) C/C++ API bindings to GDScript
+A GDExtension that adds [Luau](https://luau-lang.org) and creates a `RobloxVMInstance` for Godot to be able to run Roblox games.
 *(+ some extras)*
 
 About
 -----
-GDLuau is for in-game scripting / UGC / modding.
-*(This is **not** a replacement for or an alternative to GDScript.)*
-
-Luau API closely follows Lua 5.1 API, you can find the manual [here](https://www.lua.org/manual/5.1/manual.html).<br />
-For coding in lua/luau take a look at the ["Getting Started" section](https://luau-lang.org/getting-started) on [luau-lang.org](https://luau-lang.org).<br />
-
+This project is made for the developers that have gotten sick of using Roblox and want to become indie. Simply convert your game without modifying any scripts and it will all work as expected
 
 Features
 --------
-- Full C/C++ API excluding userdata
-- Pushing/Pulling normal Callables (lambda Callables aren't supported)
-- Pushing/Pulling Objects (Node / RefCounted) (as userdata)
-- Pushing/Pulling Godot Arrays and Dictionaries
-- Pushing/Pulling Godot Vector3s as Luau vectors
-- Custom print implementation that emits a signal
-- lua_loadstring, lua_dostring in GDScript (were "missing" in Luau)
-
+- Implementation of a Roblox VM that runs Luau and the task scheduler as needed.
+- TODO: Implementation of Instances, Roblox data types
+- TODO: Implementation of Actors
 
 Compiling
 ------------
 - Clone the repo
-- Run `scons -j=4 platform=<platform>`
-- [A test project is included in the repo](https://github.com/RadiantUwU/GDLuau/tree/master/demo)
+- Run `scons platform=<platform>`
+- [A test project is included in the repo](https://github.com/RadiantUwU/RobloxToGodotProject/tree/master/demo)
   (binaries are in `res://addons/gdluau/bin`)
-
----------------
-[![lua logo](https://luau-lang.org/assets/images/luau.png)](https://luau-lang.org)<br />
 
 **Special thanks**
 ------
