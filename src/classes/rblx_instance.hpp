@@ -53,6 +53,9 @@ public:
     virtual int lua_get(lua_State *L);
     virtual int lua_set(lua_State *L);
 
+    static int lua_static_get(lua_State *L);
+    static int lua_static_set(lua_State *L);
+
     // Lua functions
     static int AddTag(lua_State *L);
     static int ClearAllChildren(lua_State *L);

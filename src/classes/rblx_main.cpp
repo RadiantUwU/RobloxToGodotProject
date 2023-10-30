@@ -326,12 +326,12 @@ void RobloxVMInstance::register_types(lua_State *L) {
 
     ctx.newmetatable_type(ctx.UD_TRBXSCRIPTSIGNAL);
     ctx.set_dtor(ctx.UD_TRBXSCRIPTSIGNAL, RBXScriptSignal::lua_destroy);
-    ctx.push_object(RBXScriptSignal::lua_get);
+    ctx.push_object(&RBXScriptSignal::lua_get, "RBXScriptSignal::__index");
     ctx.rawset(-2, "__index");
     ctx.pop_stack(1);
 
     ctx.newmetatable_type(ctx.UD_TRBXSCRIPTCONNECTION);
-    ctx.push_object(RBXScriptConnection::lua_get);
+    ctx.push_object(&RBXScriptConnection::lua_get, "RBXScriptConnection::__index");
     ctx.rawset(-2, "__index");
     ctx.pop_stack(1);
 
@@ -341,6 +341,12 @@ void RobloxVMInstance::register_types(lua_State *L) {
     ctx.rawset(-2,"__mode");
     ctx.setmetatable(-2);
     ctx.rawset(LUA_REGISTRYINDEX,"INSTANCE_REFS");
+    ctx.newmetatable_type(ctx.UD_TINSTANCE);
+    ctx.push_object(&Instance::lua_static_get,"Instance::__index");
+    ctx.rawset(-2, "__index");
+    ctx.push_object(&Instance::lua_static_set,"Instance::__newindex");
+    ctx.rawset(-2, "__newindex");
+    ctx.pop_stack(1);
 }
 RobloxVMInstance::RobloxVMInstance(lua_State *main) {
     main_synchronized = new luau_State(this, main);

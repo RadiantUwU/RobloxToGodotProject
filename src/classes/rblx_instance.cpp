@@ -93,19 +93,18 @@ void Instance::setName(LuaString n) {
 }
 int Instance::lua_get(lua_State *L) {
     luau_function_context fn = L;
-    fn.assert_usertype_argument(1, "self", fn.UD_TINSTANCE);
-    fn.assert_type_argument(2, "key", LUA_TSTRING);
-    Instance *i = fn.as_userdata<Instance>(1);
+    //fn.assert_usertype_argument(1, "self", fn.UD_TINSTANCE); // handled by lua_static_get
+    //fn.assert_type_argument(2, "key", LUA_TSTRING);
     RBXVariant v = fn.as_object(2);
     const char *s = v.get_str(); int l = v.get_slen();
     if (strcmp(s,"Archivable") == 0) {
-        fn.push_object(i->Archivable);
+        fn.push_object(this->Archivable);
         return 1;
     } else if (strcmp(s,"ClassName") == 0) {
-        fn.push_object(i->ClassName);
+        fn.push_object(this->ClassName);
         return 1;
     } else if (strcmp(s,"Name") == 0) {
-        fn.push_object(i->Name.s,(size_t)i->Name.l);
+        fn.push_object(this->Name.s,(size_t)this->Name.l);
         return 1;
     } else if (strcmp(s,"Parent") == 0) {
         if (parent == nullptr) {
@@ -116,7 +115,7 @@ int Instance::lua_get(lua_State *L) {
         }
         return 1;
     } else {
-        for (Instance *child : i->children) {
+        for (Instance *child : this->children) {
             if (child->Name.l == l && memcmp(child->Name.s,s,l) == 0) {
                 fn.rawget(LUA_REGISTRYINDEX,"INSTANCE_REFS");
                 fn.rawget(-1,(int64_t)(void*)child);
@@ -128,21 +127,20 @@ int Instance::lua_get(lua_State *L) {
 }
 int Instance::lua_set(lua_State *L) {
     luau_function_context fn = L;
-    fn.assert_usertype_argument(1, "self", fn.UD_TINSTANCE);
-    fn.assert_type_argument(2, "key", LUA_TSTRING);
-    Instance *i = fn.as_userdata<Instance>(1);
+    //fn.assert_usertype_argument(1, "self", fn.UD_TINSTANCE); // handled by lua_static_get
+    //fn.assert_type_argument(2, "key", LUA_TSTRING);
     RBXVariant v = fn.as_object(2);
     const char *s = v.get_str();
     if (strcmp(s,"Archivable") == 0) {
         fn.assert_type_argument(3, "value", LUA_TBOOLEAN);
-        i->Archivable = (bool)fn.as_object(3);
+        this->Archivable = (bool)fn.as_object(3);
         return 0;
     } else if (strcmp(s,"ClassName") == 0) {
         fn.error("cannot set read only property ClassName");
     } else if (strcmp(s,"Name") == 0) {
         fn.assert_type_argument(3, "value", LUA_TSTRING);
         RBXVariant v = fn.as_object(3);
-        i->Name = LuaString(v.get_str(),v.get_slen());
+        this->Name = LuaString(v.get_str(),v.get_slen());
         return 0;
     } else if (strcmp(s,"Parent") == 0) {
         Instance *newparent;
@@ -152,10 +150,24 @@ int Instance::lua_set(lua_State *L) {
             fn.assert_usertype_argument(3, "value", fn.UD_TINSTANCE);
             newparent = fn.as_userdata<Instance>(3);
         }
-        setParent(newparent);
+        this->setParent(newparent);
         return 0;
     }
     fn.errorf("cannot set inexistent property '%s' in type Instance", s);
+}
+int Instance::lua_static_get(lua_State *L) {
+    luau_function_context fn = L;
+    fn.assert_usertype_argument(1, "self", fn.UD_TINSTANCE);
+    fn.assert_type_argument(2, "key", LUA_TSTRING);
+    Instance *i = fn.as_userdata<Instance>(1);
+    return i->lua_get(L);
+}
+int Instance::lua_static_set(lua_State *L) {
+    luau_function_context fn = L;
+    fn.assert_usertype_argument(1, "self", fn.UD_TINSTANCE);
+    fn.assert_type_argument(2, "key", LUA_TSTRING);
+    Instance *i = fn.as_userdata<Instance>(1);
+    return i->lua_set(L);
 }
 
 }
