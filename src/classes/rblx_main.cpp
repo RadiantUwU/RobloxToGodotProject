@@ -131,7 +131,7 @@ void LuaObject::get(luau_State *to) {
                         }
                         break;
                     }
-                    continue_out:
+                    continue_out: ;
                 }
             } else {
                 origin.pop_stack(1);
@@ -144,7 +144,7 @@ void LuaObject::get(luau_State *to) {
                     if (key != lastkey+1) break;
                     if (!iter.is_type(-2, LUA_TNUMBER)) continue; // automatic popping of the key and value
                     {
-                        RBXVariant v = origin.to_object(-2)
+                        RBXVariant v = origin.to_object(-2);
                         to_.push_object(v); // pop key leaving only value on stack
                     }
                     switch (origin.get_type(-1)) {
