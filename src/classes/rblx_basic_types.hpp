@@ -13,10 +13,9 @@ struct LuaString {
     int l;
     LuaString(String s) {
         CharString c = s.ascii();
-        size_t slen = strlen(c.size());
-        l = slen;
-        s = new char[slen+1];
-        memcpy(s,c.ptr(),l+1);
+        l = c.size();
+        s = new char[l+1];
+        memcpy(this->s,c.ptr(),l+1);
     }
     LuaString() {
         s = nullptr;
@@ -90,11 +89,11 @@ struct BrickColor {
     }
     static HashMap<unsigned short, Color8A> color_ids;
 };
-struct Vector2 {
+struct RBXVector2 {
     double X,Y;
     // TODO: other stuff
 };
-struct Vector3 {
+struct RBXVector3 {
     double X,Y,Z;
     
     Vector3 operator+(const Vector3& o) {
@@ -213,7 +212,7 @@ struct ColorSequenceKeypoint {
 struct ColorSequence {
     Vector<ColorSequenceKeypoint> Keypoints;
     ColorSequence(Color3 c) {
-        Keypoints.append(c);
+        Keypoints.append({0,c});
     }
     ColorSequence(Color3 c0, Color3 c1) {
         Keypoints.append({0,c0}); Keypoints.append({1,c1});
