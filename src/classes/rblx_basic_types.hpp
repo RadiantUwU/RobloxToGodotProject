@@ -96,59 +96,59 @@ struct RBXVector2 {
 struct RBXVector3 {
     double X,Y,Z;
     
-    Vector3 operator+(const Vector3& o) {
-        Vector3 v3;
+    RBXVector3 operator+(const RBXVector3& o) {
+        RBXVector3 v3;
         v3.X = X+o.X;
         v3.Y = Y+o.Y;
         v3.Z = Z+o.Z;
         return v3;
     }
-    Vector3 operator-(const Vector3& o) {
-        Vector3 v3;
+    RBXVector3 operator-(const RBXVector3& o) {
+        RBXVector3 v3;
         v3.X = X-o.X;
         v3.Y = Y-o.Y;
         v3.Z = Z-o.Z;
         return v3;
     }
-    Vector3 operator*(const Vector3& o) {
-        Vector3 v3;
+    RBXVector3 operator*(const RBXVector3& o) {
+        RBXVector3 v3;
         v3.X = X*o.X;
         v3.Y = Y*o.Y;
         v3.Z = Z*o.Z;
         return v3;
     }
-    Vector3 operator/(const Vector3& o) {
-        Vector3 v3;
+    RBXVector3 operator/(const RBXVector3& o) {
+        RBXVector3 v3;
         v3.X = X/o.X;
         v3.Y = Y/o.Y;
         v3.Z = Z/o.Z;
         return v3;
     }
-    Vector3 operator*(const double n) {
-        Vector3 v3;
+    RBXVector3 operator*(const double n) {
+        RBXVector3 v3;
         v3.X = X*n;
         v3.Y = Y*n;
         v3.Z = Z*n;
         return v3;
     }
-    Vector3 operator/(const double n) {
-        Vector3 v3;
+    RBXVector3 operator/(const double n) {
+        RBXVector3 v3;
         v3.X = X/n;
         v3.Y = Y/n;
         v3.Z = Z/n;
         return v3;
     }
 
-    static Vector3 new_(const double x, const double y, const double z) {
+    static RBXVector3 new_(const double x, const double y, const double z) {
         return {x, y, z};
     }
-    //TODO: static Vector3 fromNormalId
-    //TODO: static Vector3 fromAxis
+    //TODO: static RBXVector3 fromNormalId
+    //TODO: static RBXVector3 fromAxis
 
     double getMagnitude() const {
         return sqrt(X*X+Y*Y+Z*Z);
     }
-    Vector3 getUnit() const {
+    RBXVector3 getUnit() const {
         const double m = getMagnitude();
         return {X/m,Y/m/Z/m};
     }
