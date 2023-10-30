@@ -157,7 +157,7 @@ struct RBXVector3 {
 struct CFrame {
     double X,Y,Z,R00,R01,R02,R10,R11,R12,R20,R21,R22 = 0;
     CFrame()=default;
-    CFrame(Vector3 pos) {
+    CFrame(RBXVector3 pos) {
         X=pos.X; Y=pos.Y; Z=pos.Z; 
     }
     CFrame(double x, double y, double z) {
