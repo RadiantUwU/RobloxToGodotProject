@@ -73,6 +73,7 @@ int RBXScriptSignal::lua_wait(lua_State *L) {
     fn.rawset(-2, hash);
     fn.pop_stack(2); // pop table and closure
     fn.yield(0);
+    return 0;
 }
 int RBXScriptSignal::lua_fire(lua_State *L) {
     luau_function_context fn = L;

@@ -12,11 +12,11 @@ namespace godot {
 class RBXScriptSignal;
 
 class RBXScriptConnection final {
-    RBXScriptSignal* signal;
+    RBXScriptSignal* signal; // TODO: Fix edge case when signal stops existing but connection still is referenced
     int ref;
-    RBXScriptConnection() {};
     friend class RBXScriptSignal;
 public:
+    RBXScriptConnection() {};
     ~RBXScriptConnection() {};
     bool isConnected();
     void Disconnect();

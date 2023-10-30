@@ -204,7 +204,7 @@ public:
     inline void push_object(const char* str, int idx) { ::lua_pushstring(L, str); ::lua_insert(L, idx); }
     inline void push_object(const char* str, size_t len, int idx) { ::lua_pushlstring(L, str, len); ::lua_insert(L, idx); }
     inline void push_object(LuaObject obj, int idx) { obj.get(ls); ::lua_insert(L, idx); }
-    inline void push_object(lua_CFunction f, int idx) { ::lua_pushcfunction(L, f); ::lua_insert(L, idx); }
+    inline void push_object(lua_CFunction f, const char* fname = "<C++ context>", int idx) { lua_pushcfunction(L, f, fname); ::lua_insert(L, idx); }
     inline void push_object(RBXVariant& v, int idx);
     template <typename T, typename... Others>
     inline int push_objects(T o, Others... others) { push_object(o); return push_objects(others...)+1; }
@@ -243,11 +243,11 @@ public:
         return p;
     }
     template <typename T>
-    inline T* new_instance(RobloxVMInstance vm) {
+    inline T* new_instance(RobloxVMInstance* vm) {
         static_assert(::std::is_base_of<Instance, T>::value, "To pass a type to new_instance you must pass a class that derives from Instance!");
         T* p = new (::lua_newuserdatatagged(L, sizeof(T), UD_TINSTANCE)) T(vm);
         rawget(LUA_REGISTRYINDEX,"USERDATA_METATABLES");
-        rawget(-1,utype);
+        rawget(-1,UD_TINSTANCE);
         setmetatable(-3);
         pop_stack(1);
         rawget(LUA_REGISTRYINDEX,"INSTANCE_REFS");
@@ -304,13 +304,13 @@ public:
         if (!is_type(argn, type)) 
             errorf("invalid argument #%d to '%s' (%s expected, got %s)", argn, argname, lua_typename(L, type), get_typename(argn));
     }
-    inline void assert_usertype_argument(int argn, const char* argname, int type) {
+    inline void assert_usertype_argument(int argn, const char* argname, int utype) {
         if (lua_isnone(L, argn)) 
-            errorf("missing argument #%d to '%s' (%s expected)", argn, argname, lua_typename(L, type));
+            errorf("missing argument #%d to '%s' (%s expected)", argn, argname, user_types[utype]);
         if (!lua_isuserdata(L, argn)) 
-            errorf("invalid argument #%d to '%s' (%s expected, got %s)", argn, argname, user_types[type], get_typename(argn));
-        if (lua_getuser(L, argn)) 
-            errorf("invalid argument #%d to '%s' (%s expected, got %s)", argn, argname, user_types[type], get_typename(argn));
+            errorf("invalid argument #%d to '%s' (%s expected, got %s)", argn, argname, user_types[utype], get_typename(argn));
+        if (lua_userdatatag(L, argn) == utype) 
+            errorf("invalid argument #%d to '%s' (%s expected, got %s)", argn, argname, user_types[utype], get_typename(argn));
     }
     inline void assert_type_argument(int argn, const char* argname, int type1, int type2) {
         if (lua_isnone(L, argn)) 
@@ -429,7 +429,7 @@ public:
                     lua_pushnil(L);
                 }
             } else if (nres < retnres) {
-                lua_pop(L, retnres-nres)
+                lua_pop(L, retnres-nres);
             }
         }
         return status;
@@ -482,7 +482,7 @@ public:
 
     lua_Debug* getinfo(const char* what) {
         lua_Debug* d = new lua_Debug;
-        if (!lua_getinfo(L, what, d)) {
+        if (!lua_getinfo(L, 1, what, d)) {
             delete d;
             return nullptr;
         }
@@ -490,27 +490,17 @@ public:
     }
     lua_Debug* getinfo(const char* what, int level) {
         lua_Debug* d = new lua_Debug;
-        if (!lua_getstack(L, level, d)) {
-            delete d;
-            return nullptr;
-        }
-        if (!lua_getinfo(L, what, d)) {
+        if (!lua_getinfo(L, level, what, d)) {
             delete d;
             return nullptr;
         }
         return d;
     }
-    inline lua_Hook gethook() { return ::lua_gethook(L); }
-    inline int gethookcount() { return ::lua_gethookcount(L); }
-    inline int gethookmask() { return ::lua_gethookmask(L); }
     [[noreturn]] inline void dbg_break() { ::lua_break(L); }
 
     inline const char* getlocal(int level, int n) {
-        lua_Debug d;
-        if (!lua_getstack(L, level, &d)) return nullptr;
-        return lua_getlocal(L, &d, n);
+        return lua_getlocal(L, level, n);
     }
-    inline const char* getfuncargname(int n) { return lua_getlocal(L, nullptr, n); }
     inline void getfenv(int funcidx) { lua_getfenv(L, funcidx); }
     inline void setfenv(int funcidx) { lua_setfenv(L, funcidx); }
     inline const char* getupvalue(int funcidx, int n) { return lua_getupvalue(L, funcidx, n); }
@@ -541,8 +531,8 @@ public:
     
 
     inline int new_ref(int idx) { return lua_ref(L, idx); }
-    inline void push_ref(int ref) { return lua_getref(L, ref); }
-    inline void delete_ref(int ref) { return lua_unref(L, ref); }
+    inline void push_ref(int ref) { lua_getref(L, ref); }
+    inline void delete_ref(int ref) { lua_unref(L, ref); }
 
     inline void move_args(lua_State *to, int amount) {::lua_xmove(L, to, amount);}
     inline void copy_arg(lua_State *to, int idx) {::lua_xpush(L, to, idx); }
@@ -561,12 +551,12 @@ public:
     luau_function_context(luau_State *L, lua_State *thr) : luau_context(L,thr) {
         dont_clear_stack();
     }
-}
+};
 
 struct RBXVariant final {
 private:
     union {
-        int integer = 0;
+        int64_t integer = 0;
         bool boolean;
         double number;
         LuaObject obj;
@@ -581,14 +571,14 @@ public:
         RBXVARIANT_NIL,
         RBXVARIANT_BOOL,
         RBXVARIANT_INT,
-        RBXVARAINT_NUM,
+        RBXVARIANT_NUM,
         RBXVARIANT_OBJ,
         RBXVARIANT_STR,
         RBXVARIANT_PTR
     } type = Type::RBXVARIANT_NIL;
     RBXVariant() : type(Type::RBXVARIANT_NIL) {}
     RBXVariant(bool b) : type(Type::RBXVARIANT_BOOL), boolean(b) {}
-    RBXVariant(int i) : type(Type::RBXVARIANT_INT), integer(i) {}
+    RBXVariant(int64_t i) : type(Type::RBXVARIANT_INT), integer(i) {}
     RBXVariant(double n) : type(Type::RBXVARAINT_NUM), number(n) {}
     RBXVariant(LuaObject& o) : type(Type::RBXVARIANT_OBJ), obj(o) {}
     RBXVariant(const char *s) : type(Type::RBXVARIANT_STR) {
@@ -648,7 +638,7 @@ public:
         default: return true;
         }
     }
-    operator int() {
+    operator int64_t() {
         switch (type) {
         case Type::RBXVARIANT_NIL: return 0;
         case Type::RBXVARAINT_NUM: return (int)number;
@@ -705,7 +695,7 @@ class RobloxVMInstance final {
     void register_types(lua_State *L);
     lua_State* create_lua_state() {
         lua_State *L = lua_newstate(lua_alloc, nullptr);
-        ::lua_pushlightuserdata(L, VM);
+        ::lua_pushlightuserdata(L, this);
         ::lua_rawsetfield(L, LUA_REGISTRYINDEX, "ROBLOX_VM");
         register_types(L);
         return L;
