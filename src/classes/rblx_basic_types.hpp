@@ -50,6 +50,15 @@ struct LuaString {
     bool operator==(std::nullptr_t) {
         return s == nullptr;
     }
+    bool operator==(const char* s) {
+        return strcmp(s, this->s) == 0;
+    }
+    bool operator==(const LuaString& o) {
+        return o.l==l and memcmp(o.s, s, l);
+    }
+    bool operator==(const LuaString&& o) {
+        return o.l==l and memcmp(o.s, s, l);
+    }
 };
 
 struct Axes {

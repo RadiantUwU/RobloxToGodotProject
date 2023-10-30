@@ -321,8 +321,6 @@ RBXVariant luau_context::to_object(int idx) {
 
 void RobloxVMInstance::register_types(lua_State *L) { // TODO: add __type
     luau_context ctx = L;
-    ctx.push_object();
-    ctx.rawset(LUA_GLOBALSINDEX,"vector"); // deyeet
 
     ctx.newmetatable_type(ctx.UD_TRBXSCRIPTSIGNAL);
     ctx.set_dtor(ctx.UD_TRBXSCRIPTSIGNAL, RBXScriptSignal::lua_destroy);
@@ -348,9 +346,20 @@ void RobloxVMInstance::register_types(lua_State *L) { // TODO: add __type
     ctx.rawset(-2, "__newindex");
     ctx.pop_stack(1);
 }
+void RobloxVMInstance::register_genv(lua_State *L) {
+    luau_context ctx = L;
+    ctx.push_object();
+    ctx.rawset(LUA_GLOBALSINDEX,"vector"); // deyeet
+
+    ctx.new_table();
+    ctx.push_object(&Instance::new_instance,"Instance::new");
+    ctx.rawset(-2,"new");
+    ctx.rawset(LUA_GLOBALSINDEX,"Instance");
+}
 RobloxVMInstance::RobloxVMInstance(lua_State *main) {
     main_synchronized = new luau_State(this, main);
     register_types(main);
+    register_genv(L);
 }
 RobloxVMInstance::~RobloxVMInstance() {
     delete main_synchronized;

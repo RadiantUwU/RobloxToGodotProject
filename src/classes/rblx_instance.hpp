@@ -99,6 +99,7 @@ public:
     RBXScriptSignal *DescendantRemoving;
     RBXScriptSignal *Destroying;
 
+    static int new_instance(lua_State *L);
 };
 
 }

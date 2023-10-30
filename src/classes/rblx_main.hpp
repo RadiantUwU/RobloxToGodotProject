@@ -695,6 +695,7 @@ class RobloxVMInstance final {
         return memrealloc(ptr, nsize);
     }
     void register_types(lua_State *L);
+    void register_genv(lua_State *L);
     lua_State* create_lua_state() {
         lua_State *L = lua_newstate(lua_alloc, nullptr);
         ::lua_pushlightuserdata(L, this);
