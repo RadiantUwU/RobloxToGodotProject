@@ -197,7 +197,7 @@ public:
     inline void push_object(void* p) {::lua_pushlightuserdata(L, p); }
     inline void push_cclosure(lua_CFunction f, int nup, const char* fname = "<C++ context>") { lua_pushcclosure(L, f, fname, nup); }
     inline void push_object(LuaObject& obj) { obj.get(ls); }
-    inline void push_object(RBXVariant& v);
+    void push_object(RBXVariant& v);
     inline void push_object(bool b, int idx) { ::lua_pushboolean(L, b); ::lua_insert(L, idx); }
     inline void push_object(int64_t integer, int idx) { ::lua_pushinteger(L, integer); ::lua_insert(L, idx); }
     inline void push_object(double number, int idx) { ::lua_pushnumber(L, number); ::lua_insert(L, idx); }
@@ -207,16 +207,16 @@ public:
     inline void push_object(LuaObject& obj, int idx) { obj.get(ls); ::lua_insert(L, idx); }
     inline void push_object(lua_CFunction f, int idx, const char* fname = "<C++ context>") { lua_pushcfunction(L, f, fname); ::lua_insert(L, idx); }
     inline void push_object(void* p, int idx) {::lua_pushlightuserdata(L, p); ::lua_insert(L, idx); }
-    inline void push_object(RBXVariant& v, int idx);
+    void push_object(RBXVariant& v, int idx);
     template <typename T, typename... Others>
     inline int push_objects(T o, Others... others) { push_object(o); return push_objects(others...)+1; }
     template <typename T>
     inline int push_objects(T o) { push_object(o); return 1; }
     inline void push_current_thread() { ::lua_pushthread(L); }
-    inline RBXVariant to_object();
-    inline RBXVariant to_object(int idx);
-    inline RBXVariant as_object();
-    inline RBXVariant as_object(int idx);
+    RBXVariant to_object();
+    RBXVariant to_object(int idx);
+    RBXVariant as_object();
+    RBXVariant as_object(int idx);
     inline lua_State* as_thread(int idx = -1) {return ::lua_tothread(L, idx); }
     inline lua_CFunction as_cfunc(int idx = -1) {return ::lua_tocfunction(L, idx); }
     inline int as_absolute_stack_index(int idx = -1) {return (idx > 0) ? idx : ::lua_gettop(L)+1-idx;}
