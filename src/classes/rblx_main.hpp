@@ -591,7 +591,7 @@ public:
     RBXVariant(const char* s, size_t l) : type(Type::RBXVARIANT_STR) {
         strl = l+1;
         str = new char[strl];
-        memcpy(str, s, strl);
+        memcpy(str, s, strl-1);
     }
     RBXVariant(void* p) : type(Type::RBXVARIANT_PTR), ptr(p) {}
     RBXVariant(RBXVariant& other) : type(other.type) {
