@@ -58,27 +58,6 @@ void LuauVM::_bind_passthrough_methods() {
         BIND_ENUM_CONSTANT(LUA_MULTRET);
     }
 
-
-    // Unique to GDLuau
-    {
-        ClassDB::bind_method(D_METHOD("lua_pushvariant", "var"), &LuauVM::lua_pushvariant);
-        ClassDB::bind_method(D_METHOD("lua_pusharray", "arr"), &LuauVM::lua_pusharray);
-        ClassDB::bind_method(D_METHOD("lua_pushdictionary", "dict"), &LuauVM::lua_pushdictionary);
-
-        ClassDB::bind_method(D_METHOD("lua_tovariant", "index"), &LuauVM::lua_tovariant);
-        ClassDB::bind_method(D_METHOD("lua_toarray", "index"), &LuauVM::lua_toarray);
-        ClassDB::bind_method(D_METHOD("lua_todictionary", "index"), &LuauVM::lua_todictionary);
-
-        ClassDB::bind_method(D_METHOD("lua_tofunction", "index"), &LuauVM::lua_tofunction);
-        ClassDB::bind_method(D_METHOD("lua_pushcallable", "func"), &LuauVM::lua_pushcallable);
-        ClassDB::bind_method(D_METHOD("lua_pushfunction", "func"), &LuauVM::lua_pushcallable);
-        ClassDB::bind_method(D_METHOD("lua_pushfunc", "func"), &LuauVM::lua_pushcallable);
-
-        ClassDB::bind_method(D_METHOD("lua_pushobject", "object"), &LuauVM::lua_pushobject);
-        ClassDB::bind_method(D_METHOD("lua_toobject", "index"), &LuauVM::lua_toobject);
-        ClassDB::bind_method(D_METHOD("lua_isobject", "index"), &LuauVM::lua_isobject);
-    }
-
     // Default library
     {
         ClassDB::bind_method(D_METHOD("lua_loadstring", "code", "chunkname"), &LuauVM::load_string, DEFVAL("loadstring"));

@@ -9,6 +9,7 @@
 #include <classes/luau_function.h>
 #include <utils.h>
 #include <vector_lib.h>
+#include "rblx_main.hpp"
 
 
 #define GDLUAU_REGISTRY_NODE_KEY "gdluau_node"
@@ -18,7 +19,7 @@ namespace godot {
 
 class LuauVM : public Node {
     GDCLASS(LuauVM, Node)
-
+    RobloxVMInstance* vm;
 private:
     lua_State* L;
     void create_metatables();
@@ -70,7 +71,6 @@ public:
 
     void lua_pushobject(Object *node);
     Object *lua_toobject(int idx);
-    bool lua_isobject(int idx);
 
     #pragma endregion
 
