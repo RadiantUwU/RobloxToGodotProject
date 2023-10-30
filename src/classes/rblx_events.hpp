@@ -51,12 +51,12 @@ public:
     template <typename... Args>
     void Fire(Args... args) {
         luau_context ctx = L;
-        ctx.push_object(lua_fire);
+        ctx.push_object(&lua_fire);
         ctx.call(ctx.push_objects(args...), 0);
     }
     void Fire() {
         luau_context ctx = L;
-        ctx.push_object(lua_fire);
+        ctx.push_object(&lua_fire);
         ctx.call(0, 0);
     }
 };

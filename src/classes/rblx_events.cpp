@@ -28,7 +28,7 @@ int RBXScriptSignal::lua_connect(lua_State *L) {
     fn.assert_type_argument(2,"callback",LUA_TFUNCTION);
     RBXScriptSignal* signal = fn.as_userdata<RBXScriptSignal>(1);
     fn.push_cclosure(RBXScriptSignal::lua_onfire, 1); // grabs the callback
-    long long hash = fn.as_pointer_hash(-1); // get closure hash
+    int64_t hash = fn.as_pointer_hash(-1); // get closure hash
     fn.push_ref(signal->ref); // push table
     fn.push_value(-2); // push the closure
     fn.rawset(-2, hash);
@@ -43,10 +43,10 @@ int RBXScriptSignal::lua_once(lua_State *L) {
     fn.assert_usertype_argument(1,"self", fn.UD_TRBXSCRIPTSIGNAL);
     fn.assert_type_argument(2,"callback",LUA_TFUNCTION);
     RBXScriptSignal* signal = fn.as_userdata<RBXScriptSignal>(1);
-    fn.push_object((long long)0);
-    fn.push_object((long long)signal->ref);
+    fn.push_object((int64_t)0);
+    fn.push_object((int64_t)signal->ref);
     fn.push_cclosure(RBXScriptSignal::lua_onfire_autodisconnect, 3); // grabs the callback
-    long long hash = fn.as_pointer_hash(-1); // get closure hash
+    int64_t hash = fn.as_pointer_hash(-1); // get closure hash
     fn.push_object(hash);
     fn.setupvalue(-2, 2);
     fn.push_ref(signal->ref); // push table
@@ -67,7 +67,7 @@ int RBXScriptSignal::lua_wait(lua_State *L) {
     RBXScriptSignal* signal = fn.as_userdata<RBXScriptSignal>(1);
     fn.push_current_thread();
     fn.push_cclosure(RBXScriptSignal::lua_resume_onfire, 1); // grabs the callback
-    long long hash = fn.as_pointer_hash(-1); // get closure hash
+    int64_t hash = fn.as_pointer_hash(-1); // get closure hash
     fn.push_ref(signal->ref); // push table
     fn.push_value(-2); // push the closure
     fn.rawset(-2, hash);
@@ -108,9 +108,9 @@ int RBXScriptSignal::lua_onfire_autodisconnect(lua_State *L) {
     int args = fn.get_stack_size();
     delete fn.getinfo("f",1);
     fn.getupvalue(-1, 2);
-    long long hash = (long long)fn.to_object();
+    int64_t hash = (int64_t)fn.to_object();
     fn.getupvalue(-1, 3);
-    long long ref = (long long)fn.to_object();
+    int64_t ref = (int64_t)fn.to_object();
     fn.getupvalue(-1, 1);
     fn.remove_stack(-2);
     fn.insert_into(1);
@@ -139,16 +139,16 @@ int RBXScriptSignal::lua_get(lua_State *L) {
     RBXVariant v = fn.to_object();
     const char *s = v.get_str();
     if (strcmp(s,"Connect") == 0) {
-        fn.push_object(RBXScriptSignal::lua_connect);
+        fn.push_object(&RBXScriptSignal::lua_connect,"RBXScriptSignal::Connect");
         return 1;
     } else if (strcmp(s, "Once") == 0) {
-        fn.push_object(RBXScriptSignal::lua_once);
+        fn.push_object(&RBXScriptSignal::lua_once,"RBXScriptSignal::Once");
         return 1;
     } else if (strcmp(s, "ConnectParallel") == 0) {
-        fn.push_object(RBXScriptSignal::lua_connectparallel);
+        fn.push_object(&RBXScriptSignal::lua_connectparallel,"RBXScriptSignal::ConnectParallel");
         return 1;
     } else if (strcmp(s, "Wait") == 0) {
-        fn.push_object(RBXScriptSignal::lua_wait);
+        fn.push_object(&RBXScriptSignal::lua_wait,"RBXScriptSignal::Wait");
         return 1;
     }
     fn.error("invalid key provided to RBXScriptSignal.__index()");
@@ -190,10 +190,10 @@ int RBXScriptConnection::lua_get(lua_State *L) {
     RBXVariant v = fn.to_object();
     const char *s = v.get_str();
     if (strcmp(s,"isConnected") == 0) {
-        fn.push_object(RBXScriptConnection::lua_isConnected);
+        fn.push_object(&RBXScriptConnection::lua_isConnected,"RBXScriptConnection::isConnected");
         return 1;
     } else if (strcmp(s, "Disconnect") == 0) {
-        fn.push_object(RBXScriptConnection::lua_Disconnect);
+        fn.push_object(&RBXScriptConnection::lua_Disconnect,"RBXScriptConnection::Disconnect");
         return 1;
     }
     fn.error("invalid key provided to RBXScriptConnection.__index()");

@@ -112,14 +112,14 @@ int Instance::lua_get(lua_State *L) {
             fn.push_object();
         } else {
             fn.rawget(LUA_REGISTRYINDEX,"INSTANCE_REFS");
-            fn.rawget(-1,(long long)(void*)parent);
+            fn.rawget(-1,(int64_t)(void*)parent);
         }
         return 1;
     } else {
         for (Instance *child : i->children) {
             if (child->Name.l == l && memcmp(child->Name.s,s,l) == 0) {
                 fn.rawget(LUA_REGISTRYINDEX,"INSTANCE_REFS");
-                fn.rawget(-1,(long long)(void*)child);
+                fn.rawget(-1,(int64_t)(void*)child);
                 return 1;
             }
         }

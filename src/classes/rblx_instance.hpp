@@ -31,10 +31,10 @@ protected:
     Vector<String> tags;
     HashMap<String, RBXScriptSignal*> attribute_signals;
     HashMap<String, RBXScriptSignal*> property_signals;
-    Vector<long long> refs;
+    Vector<int64_t> refs;
     Instance* parent;// Properties
     LuaString Name;// Propertiesaa
-    long long network_id;
+    int64_t network_id;
     RobloxVMInstance *VM;
     bool parent_locked = false;
 public:

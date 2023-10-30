@@ -188,7 +188,7 @@ public:
     inline void push_object() { ::lua_pushnil(L); }
     inline void push_object(std::nullptr_t) { ::lua_pushnil(L); }
     inline void push_object(bool b) { ::lua_pushboolean(L, b); }
-    inline void push_object(long long integer) { ::lua_pushinteger(L, integer); }
+    inline void push_object(int64_t integer) { ::lua_pushinteger(L, integer); }
     inline void push_object(double number) { ::lua_pushnumber(L, number); }
     inline void push_object(lua_State *thr) { ::lua_pushthread(thr); ::lua_xmove(thr, L, 1); };
     inline void push_object(const char* str) { ::lua_pushstring(L, str); }
@@ -198,13 +198,13 @@ public:
     inline void push_object(LuaObject obj) { obj.get(ls); }
     inline void push_object(RBXVariant& v);
     inline void push_object(bool b, int idx) { ::lua_pushboolean(L, b); ::lua_insert(L, idx); }
-    inline void push_object(long long integer, int idx) { ::lua_pushinteger(L, integer); ::lua_insert(L, idx); }
+    inline void push_object(int64_t integer, int idx) { ::lua_pushinteger(L, integer); ::lua_insert(L, idx); }
     inline void push_object(double number, int idx) { ::lua_pushnumber(L, number); ::lua_insert(L, idx); }
     inline void push_object(lua_State *thr, int idx) { ::lua_pushthread(thr); ::lua_xmove(thr, L, 1); ::lua_insert(L, idx); };
     inline void push_object(const char* str, int idx) { ::lua_pushstring(L, str); ::lua_insert(L, idx); }
     inline void push_object(const char* str, size_t len, int idx) { ::lua_pushlstring(L, str, len); ::lua_insert(L, idx); }
     inline void push_object(LuaObject obj, int idx) { obj.get(ls); ::lua_insert(L, idx); }
-    inline void push_object(lua_CFunction f, const char* fname = "<C++ context>", int idx) { lua_pushcfunction(L, f, fname); ::lua_insert(L, idx); }
+    inline void push_object(lua_CFunction f, int idx, const char* fname = "<C++ context>") { lua_pushcfunction(L, f, fname); ::lua_insert(L, idx); }
     inline void push_object(RBXVariant& v, int idx);
     template <typename T, typename... Others>
     inline int push_objects(T o, Others... others) { push_object(o); return push_objects(others...)+1; }
@@ -219,7 +219,7 @@ public:
     inline lua_CFunction as_cfunc(int idx = -1) {return ::lua_tocfunction(L, idx); }
     inline int as_absolute_stack_index(int idx = -1) {return (idx > 0) ? idx : ::lua_gettop(L)+1-idx;}
     inline void push_pointer_hash(int idx) { ::lua_pushinteger(L, (size_t)::lua_topointer(L, idx)); }
-    inline long long as_pointer_hash(int idx) { return (size_t)::lua_topointer(L, idx); }
+    inline int64_t as_pointer_hash(int idx) { return (size_t)::lua_topointer(L, idx); }
 
     inline int get_type(int idx) { return ::lua_type(L, idx); }
     inline int get_userdata_type(int idx) { return ::lua_userdatatag(L, idx); }
@@ -327,16 +327,16 @@ public:
 
     inline int get(int tbl_idx) { return lua_gettable(L, tbl_idx); }
     inline int get(int tbl_idx, const char* field) { return lua_getfield(L, tbl_idx, field); }
-    inline int get(int tbl_idx, long long i) { lua_pushnumber(L, i); return lua_gettable(L, (tbl_idx < 0 && !lua_ispseudo(tbl_idx)) ? tbl_idx-1 : tbl_idx); }
+    inline int get(int tbl_idx, int64_t i) { lua_pushnumber(L, i); return lua_gettable(L, (tbl_idx < 0 && !lua_ispseudo(tbl_idx)) ? tbl_idx-1 : tbl_idx); }
     inline void set(int tbl_idx) { lua_settable(L, tbl_idx); }
     inline void set(int tbl_idx, const char* field) { lua_setfield(L, tbl_idx, field); }
-    inline void set(int tbl_idx, long long i) { lua_pushnumber(L, i); lua_pushvalue(L, -2); lua_settable(L, (tbl_idx < 0 && !lua_ispseudo(tbl_idx)) ? tbl_idx-2 : tbl_idx); }
+    inline void set(int tbl_idx, int64_t i) { lua_pushnumber(L, i); lua_pushvalue(L, -2); lua_settable(L, (tbl_idx < 0 && !lua_ispseudo(tbl_idx)) ? tbl_idx-2 : tbl_idx); }
     inline int rawget(int tbl_idx) { return lua_rawget(L, tbl_idx); }
     inline int rawget(int tbl_idx, const char* field) { return lua_rawgetfield(L, tbl_idx, field); }
-    inline int rawget(int tbl_idx, long long i) { return lua_rawgeti(L, tbl_idx, i); }
+    inline int rawget(int tbl_idx, int64_t i) { return lua_rawgeti(L, tbl_idx, i); }
     inline void rawset(int tbl_idx) { lua_rawset(L, tbl_idx); }
     inline void rawset(int tbl_idx, const char* field) { lua_rawsetfield(L, tbl_idx, field); }
-    inline void rawset(int tbl_idx, long long i) { lua_rawseti(L, tbl_idx, i); }
+    inline void rawset(int tbl_idx, int64_t i) { lua_rawseti(L, tbl_idx, i); }
     inline int len(int idx) { return lua_objlen(L, idx); }
 
     inline int rawiter(int idx, int iter) { return lua_rawiter(L, idx, iter); }
@@ -579,7 +579,7 @@ public:
     RBXVariant() : type(Type::RBXVARIANT_NIL) {}
     RBXVariant(bool b) : type(Type::RBXVARIANT_BOOL), boolean(b) {}
     RBXVariant(int64_t i) : type(Type::RBXVARIANT_INT), integer(i) {}
-    RBXVariant(double n) : type(Type::RBXVARAINT_NUM), number(n) {}
+    RBXVariant(double n) : type(Type::RBXVARIANT_NUM), number(n) {}
     RBXVariant(LuaObject& o) : type(Type::RBXVARIANT_OBJ), obj(o) {}
     RBXVariant(const char *s) : type(Type::RBXVARIANT_STR) {
         strl = strlen(s)+1;
@@ -632,7 +632,7 @@ public:
     operator bool() {
         switch (type) {
         case Type::RBXVARIANT_NIL: return false;
-        case Type::RBXVARAINT_NUM: return number > 0;
+        case Type::RBXVARIANT_NUM: return number > 0;
         case Type::RBXVARIANT_BOOL: return boolean;
         case Type::RBXVARIANT_INT: return integer != 0;
         default: return true;
@@ -641,7 +641,7 @@ public:
     operator int64_t() {
         switch (type) {
         case Type::RBXVARIANT_NIL: return 0;
-        case Type::RBXVARAINT_NUM: return (int)number;
+        case Type::RBXVARIANT_NUM: return (int)number;
         case Type::RBXVARIANT_BOOL: return boolean;
         case Type::RBXVARIANT_INT: return integer;
         case Type::RBXVARIANT_PTR: return (size_t)ptr;
@@ -651,7 +651,7 @@ public:
     operator double() {
         switch (type) {
         case Type::RBXVARIANT_NIL: return 0.0;
-        case Type::RBXVARAINT_NUM: return number;
+        case Type::RBXVARIANT_NUM: return number;
         case Type::RBXVARIANT_BOOL: return (double)boolean;
         case Type::RBXVARIANT_INT: return integer;
         default: return NAN;
