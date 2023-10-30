@@ -196,7 +196,7 @@ public:
     inline void push_object(lua_CFunction f, const char* fname = "<C++ context>") { lua_pushcfunction(L, f, fname); }
     inline void push_object(void* p) {::lua_pushlightuserdata(L, p); }
     inline void push_cclosure(lua_CFunction f, int nup, const char* fname = "<C++ context>") { lua_pushcclosure(L, f, fname, nup); }
-    inline void push_object(const LuaObject& obj) { obj.get(ls); }
+    inline void push_object(LuaObject& obj) { obj.get(ls); }
     inline void push_object(RBXVariant& v);
     inline void push_object(bool b, int idx) { ::lua_pushboolean(L, b); ::lua_insert(L, idx); }
     inline void push_object(int64_t integer, int idx) { ::lua_pushinteger(L, integer); ::lua_insert(L, idx); }
@@ -204,7 +204,7 @@ public:
     inline void push_object(lua_State *thr, int idx) { ::lua_pushthread(thr); ::lua_xmove(thr, L, 1); ::lua_insert(L, idx); };
     inline void push_object(const char* str, int idx) { ::lua_pushstring(L, str); ::lua_insert(L, idx); }
     inline void push_object(const char* str, size_t len, int idx) { ::lua_pushlstring(L, str, len); ::lua_insert(L, idx); }
-    inline void push_object(const LuaObject& obj, int idx) { obj.get(ls); ::lua_insert(L, idx); }
+    inline void push_object(LuaObject& obj, int idx) { obj.get(ls); ::lua_insert(L, idx); }
     inline void push_object(lua_CFunction f, int idx, const char* fname = "<C++ context>") { lua_pushcfunction(L, f, fname); ::lua_insert(L, idx); }
     inline void push_object(void* p, int idx) {::lua_pushlightuserdata(L, p); ::lua_insert(L, idx); }
     inline void push_object(RBXVariant& v, int idx);
