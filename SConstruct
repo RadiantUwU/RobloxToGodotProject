@@ -57,7 +57,7 @@ for path in luau_source_paths:
     lua_sources.extend(Glob(path + "/*.cpp"))
     lua_sources.extend(Glob(path + "/*.c"))
 
-library_name = "gdluau{}{}".format(env['suffix'], env["LIBSUFFIX"])
+library_name = "RobloxToGodotProject{}{}".format(env['suffix'], env["LIBSUFFIX"])
 library = lua_env.StaticLibrary("bin/{}".format(library_name), source=lua_sources)
 module_env.Default(library)
 
@@ -74,14 +74,14 @@ env["suffix"] = env["suffix"].replace(".dev", "").replace(".double", "").replace
 
 if env["platform"] == "macos":
     library = module_env.SharedLibrary(
-        "demo/addons/gdluau/bin/libgdluau.{}.{}.framework/libgdluau.{}.{}".format(
+        "demo/addons/RobloxToGodotProject/bin/libRobloxToGodotProject.{}.{}.framework/libRobloxToGodotProject.{}.{}".format(
             env["platform"], env["target"], env["platform"], env["target"]
         ),
         source=sources,
     )
 else:
     library = module_env.SharedLibrary(
-        "demo/addons/gdluau/bin/libgdluau{}{}".format(env["suffix"], env["SHLIBSUFFIX"]),
+        "demo/addons/RobloxToGodotProject/bin/libRobloxToGodotProject{}{}".format(env["suffix"], env["SHLIBSUFFIX"]),
         source=sources,
     )
 

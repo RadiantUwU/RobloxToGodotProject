@@ -5,7 +5,7 @@
 
 using namespace godot;
 
-void initialize_gdluau_module(ModuleInitializationLevel p_level);
-void uninitialize_gdluau_module(ModuleInitializationLevel p_level);
+void initialize_RobloxToGodotProject_module(ModuleInitializationLevel p_level);
+void uninitialize_RobloxToGodotProject_module(ModuleInitializationLevel p_level);
 
 #endif // GDLUAU_REGISTER_TYPES_H

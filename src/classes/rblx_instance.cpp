@@ -7,6 +7,7 @@
 #include "rblx_events.hpp"
 #include "rblx_instance.hpp"
 #include "rblx_main.hpp"
+#include "rblx_debug.hpp"
 
 namespace godot {
 
@@ -15,6 +16,8 @@ Instance::Instance(RobloxVMInstance *VM) {
     luau_State *L = VM->main_synchronized;
     luau_context ls = VM->main_synchronized;
     AncestryChanged = ls.new_userdata<RBXScriptSignal>(ls.UD_TRBXSCRIPTSIGNAL, L);
+    RBLX_PRINT_VERBOSE("UTYPE: ",ls.get_userdata_type(-1));
+    RBLX_PRINT_VERBOSE("expected: ",ls.UD_TRBXSCRIPTSIGNAL);
     refs.append(ls.new_ref(-1));
     AttributeChanged = ls.new_userdata<RBXScriptSignal>(ls.UD_TRBXSCRIPTSIGNAL, L);
     refs.append(ls.new_ref(-1));
@@ -65,20 +68,25 @@ void Instance::setParent(Instance *newparent) {
         return; // TODO: Log a warning
     }
     if (parent) {
+        RBLX_PRINT_VERBOSE("Starting recursion through parent's references table");
         for (int ref : parent->refs) {
             luau_context ctx = VM->main_synchronized;
             ctx.push_ref(ref);
             if (ctx.as_userdata<Instance>(-1) == this) {
+                RBLX_PRINT_VERBOSE("Found reference of old parent: ", ref);
                 ctx.delete_ref(ref);
                 parent->refs.erase(ref);
                 break;
             }
         }
+        RBLX_PRINT_VERBOSE("Deleting from parent->children...");
         parent->children.erase(this);
+        RBLX_PRINT_VERBOSE("Parent unparented :3");
     }
     parent = newparent;
     if (newparent) {
         parent->children.append(this);
+        RBLX_PRINT_VERBOSE("Creating new reference of parent...");
         luau_context ctx = VM->main_synchronized;
         ctx.rawget(LUA_REGISTRYINDEX,"INSTANCE_REFS");
         ctx.rawget(-1,(size_t)(void*)this);
@@ -157,6 +165,7 @@ int Instance::lua_set(lua_State *L) {
 }
 int Instance::lua_static_get(lua_State *L) {
     luau_function_context fn = L;
+    RBLX_PRINT_VERBOSE("Instance::__index");
     fn.assert_usertype_argument(1, "self", fn.UD_TINSTANCE);
     fn.assert_type_argument(2, "key", LUA_TSTRING);
     Instance *i = fn.as_userdata<Instance>(1);
@@ -164,10 +173,27 @@ int Instance::lua_static_get(lua_State *L) {
 }
 int Instance::lua_static_set(lua_State *L) {
     luau_function_context fn = L;
+    RBLX_PRINT_VERBOSE("Instance::__newindex");
+    fn.getmetatable(-1);
+    auto mt = fn.as_pointer_hash(-1);
+    fn.pop_stack(1);
+    RBLX_PRINT_VERBOSE(mt);
+    RBLX_PRINT_VERBOSE("IS USERDATA self: ",fn.get_type(1)==LUA_TUSERDATA," IS INSTANCE: ",fn.get_userdata_type(1)==fn.UD_TINSTANCE);
     fn.assert_usertype_argument(1, "self", fn.UD_TINSTANCE);
     fn.assert_type_argument(2, "key", LUA_TSTRING);
     Instance *i = fn.as_userdata<Instance>(1);
     return i->lua_set(L);
 }
-
+void Instance::delete_instance(lua_State *L, void *i) {
+    ((Instance*)i)->~Instance();
+}
+int Instance::lua_static_tostring(lua_State *L) {
+    luau_function_context fn = L;
+    RBLX_PRINT_VERBOSE("Instance::__tostring");
+    fn.assert_usertype_argument(1, "self", fn.UD_TINSTANCE);
+    Instance *i = fn.as_userdata<Instance>(1);
+    RBXVariant v = RBXVariant(i->Name.s,i->Name.l);
+    fn.push_object(v);
+    return 1;
+}
 }

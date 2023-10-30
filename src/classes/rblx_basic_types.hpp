@@ -6,6 +6,7 @@
 #include <godot_cpp/templates/hash_map.hpp>
 #include <godot_cpp/templates/vector.hpp>
 #include <string.h>
+#include "rblx_debug.hpp"
 namespace godot {
 
 struct LuaString {
@@ -14,35 +15,69 @@ struct LuaString {
     LuaString(String s) {
         CharString c = s.ascii();
         l = c.size();
-        s = new char[l+1];
-        memcpy(this->s,c.ptr(),l+1);
+        this->s = (char*)memalloc((l+1)*sizeof(char));
+        if (c.ptr() == nullptr) {
+            this->s[0] = '\0';
+        } else {
+            memcpy(this->s,c.ptr(),(l+1)*sizeof(char));
+            RBLX_PRINT_VERBOSE("Initializing LuaString with length of ", l, " with content ", this->s);
+        }
     }
     LuaString() {
         s = nullptr;
         l = 0;
+        RBLX_PRINT_VERBOSE("Initializing LuaString with length of 0");
     }
     explicit LuaString(int len) {
         l = len;
-        s = new char[len+1];
+        s = (char*)memalloc((l+1)*sizeof(char));
+        RBLX_PRINT_VERBOSE("Initializing LuaString with length of ", l, " with content ", s);
     }
     LuaString(const char* cs) {
         auto slen = strlen(cs);
-        s = new char[slen+1];
-        strcpy(s, cs);
         l = slen;
+        s = (char*)memalloc((l+1)*sizeof(char));
+        if (cs == nullptr) {
+            s[0] = 0;
+        } else {
+            strcpy(s, cs);
+            RBLX_PRINT_VERBOSE("Initializing LuaString with length of ", l, " with content ", s);
+        }
     }
     LuaString(const char* cs, size_t len) {
         l = len;
-        s = new char[l+1];
-        memcpy(s,cs,l+1);
+        s = (char*)memalloc((l+1)*sizeof(char));
+        if (cs == nullptr) {
+            s[0] = 0;
+        } else {
+            memcpy(s,cs,(l+1)*sizeof(char));
+            RBLX_PRINT_VERBOSE("Initializing LuaString with length of ", l, " with content ", s);
+        }
     }
-    LuaString(LuaString& o) {
+    LuaString(const LuaString& o) {
         l = o.l;
-        s = new char [l+1];
-        memcpy(s,o.s,l+1);
+        s = (char*)memalloc((l+1)*sizeof(char));
+        if (o.s == nullptr) {
+            s[0] = 0;
+        } else {
+            memcpy(s,o.s,(l+1)*sizeof(char));
+            RBLX_PRINT_VERBOSE("Copying LuaString with length of ", l, " with content ", s);
+        }
     }
     ~LuaString() {
-        delete[] s;
+        RBLX_PRINT_VERBOSE("Deleting LuaString of length ",l);
+        memfree(s);
+    }
+    LuaString& operator=(const LuaString& o) {
+        l = o.l;
+        s = (char*)memalloc((l+1)*sizeof(char));
+        if (o.s == nullptr) {
+            s[0] = 0;
+        } else {
+            memcpy(s,o.s,(l+1)*sizeof(char));
+            RBLX_PRINT_VERBOSE("Copying LuaString with length of ", l, " with content ", s);
+        }
+        return *this;
     }
     operator const char* () {
         return s;
