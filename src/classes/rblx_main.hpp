@@ -10,6 +10,7 @@
 #include <lua.h>
 #include <lualib.h>
 #include <mutex>
+#include "rblx_debug.hpp"
 
 namespace godot {
 
@@ -47,6 +48,8 @@ public:
         ::lua_rawsetfield(L, LUA_REGISTRYINDEX, "LUAU_STATE");
         ::lua_newtable(L);
         ::lua_rawsetfield(L, LUA_REGISTRYINDEX, "USERDATA_METATABLES");
+        ::lua_pushlightuserdata(L, VM);
+        ::lua_rawsetfield(L, LUA_REGISTRYINDEX, "ROBLOX_VM");
     }
     luau_State(RobloxVMInstance *vm);
     ~luau_State();
@@ -60,7 +63,7 @@ class luau_context { // middle level abstraction
 protected:
     lua_State *L;
     luau_State *ls;
-    int last_stack_size;
+    int64_t last_stack_size;
     int thr_ref;
     friend class LuaObject;
 public:
@@ -237,25 +240,34 @@ public:
     
     template <typename T, typename... Args>
     inline T* new_userdata(int utype, Args... args) {
+        int last_stack_size = get_stack_size();
         T* p = new (::lua_newuserdatatagged(L, sizeof(T), utype)) T(args...);
+        ::lua_setuserdatatag(L, -1, utype);
+        RBLX_PRINT_VERBOSE("STACK SIZE BEFORE: ",last_stack_size, " AFTER(expected before+1): ", get_stack_size());
         rawget(LUA_REGISTRYINDEX,"USERDATA_METATABLES");
         rawget(-1,utype);
+        RBLX_PRINT_VERBOSE("USER METATABLE: ",as_pointer_hash(-1));
         setmetatable(-3);
         pop_stack(1);
+        RBLX_PRINT_VERBOSE("USER TAG: ",get_userdata_type(-1));
         return p;
     }
     template <typename T>
     inline T* new_instance(RobloxVMInstance* vm) {
         static_assert(::std::is_base_of<Instance, T>::value, "To pass a type to new_instance you must pass a class that derives from Instance!");
         T* p = new (::lua_newuserdatatagged(L, sizeof(T), UD_TINSTANCE)) T(vm);
+        p->setName((const char*)p->ClassName);
+        ::lua_setuserdatatag(L, -1, UD_TINSTANCE);
         rawget(LUA_REGISTRYINDEX,"USERDATA_METATABLES");
         rawget(-1,UD_TINSTANCE);
+        RBLX_PRINT_VERBOSE("USER METATABLE: ",as_pointer_hash(-1));
         setmetatable(-3);
         pop_stack(1);
         rawget(LUA_REGISTRYINDEX,"INSTANCE_REFS");
         push_value(-2);
         rawset(-2,(size_t)(void*)p);
         pop_stack(1);
+        RBLX_PRINT_VERBOSE("USER TAG: ",get_userdata_type(-1));
         return p;
     }
     template <typename T>
@@ -279,10 +291,10 @@ public:
         return ::lua_getmetatable(L, object_idx);
     }
     inline void newmetatable_type(int utype) {
-        get(LUA_REGISTRYINDEX,"USERDATA_METATABLES");
+        rawget(LUA_REGISTRYINDEX,"USERDATA_METATABLES");
         new_table();
         push_value(-1);
-        set(-3);
+        rawset(-3,utype);
     }
 
     inline void freeze(int tbl_idx) {
@@ -311,8 +323,8 @@ public:
             errorf("missing argument #%d to '%s' (%s expected)", argn, argname, user_types[utype]);
         if (!lua_isuserdata(L, argn)) 
             errorf("invalid argument #%d to '%s' (%s expected, got %s)", argn, argname, user_types[utype], get_typename(argn));
-        if (lua_userdatatag(L, argn) == utype) 
-            errorf("invalid argument #%d to '%s' (%s expected, got %s)", argn, argname, user_types[utype], get_typename(argn));
+        if (lua_userdatatag(L, argn) != utype) 
+            errorf("invalid argument #%d to '%s' (%s expected, got %s)", argn, argname, user_types[utype], user_types[lua_userdatatag(L, argn)]);
     }
     inline void assert_type_argument(int argn, const char* argname, int type1, int type2) {
         if (lua_isnone(L, argn)) 
@@ -325,7 +337,14 @@ public:
     inline void remove_stack(int idx) { lua_remove(L, idx); }
     inline int get_stack_size() { return lua_gettop(L); }
     inline void push_value(int idx) { lua_pushvalue(L, idx); }
-    inline void clear_stack() { if (last_stack_size < 0) return; size_t s = last_stack_size - lua_gettop(L); if (s>0) lua_pop(L, s);}
+    inline void clear_stack() { 
+        if (last_stack_size < 0) return; 
+        int64_t s = lua_gettop(L) - last_stack_size;
+        if (s>0) {
+            lua_pop(L, s);
+            RBLX_PRINT_VERBOSE("popped ",s," values from clear_stack()");
+        }
+    }
 
     inline int get(int tbl_idx) { return lua_gettable(L, tbl_idx); }
     inline int get(int tbl_idx, const char* field) { return lua_getfield(L, tbl_idx, field); }
@@ -578,23 +597,35 @@ public:
         RBXVARIANT_STR,
         RBXVARIANT_PTR
     } type = Type::RBXVARIANT_NIL;
-    RBXVariant() : type(Type::RBXVARIANT_NIL) {}
-    RBXVariant(bool b) : type(Type::RBXVARIANT_BOOL), boolean(b) {}
-    RBXVariant(int64_t i) : type(Type::RBXVARIANT_INT), integer(i) {}
-    RBXVariant(double n) : type(Type::RBXVARIANT_NUM), number(n) {}
-    RBXVariant(LuaObject& o) : type(Type::RBXVARIANT_OBJ), obj(o) {}
+    RBXVariant() : type(Type::RBXVARIANT_NIL) { RBLX_PRINT_VERBOSE("Initializing RBXVariant with nil"); }
+    RBXVariant(bool b) : type(Type::RBXVARIANT_BOOL), boolean(b) { RBLX_PRINT_VERBOSE("Initializing RBXVariant with bool ", b); }
+    RBXVariant(int64_t i) : type(Type::RBXVARIANT_INT), integer(i) { RBLX_PRINT_VERBOSE("Initializing RBXVariant with int ", i); }
+    RBXVariant(double n) : type(Type::RBXVARIANT_NUM), number(n) { RBLX_PRINT_VERBOSE("Initializing RBXVariant with num ", n);}
+    RBXVariant(LuaObject& o) : type(Type::RBXVARIANT_OBJ), obj(o) { RBLX_PRINT_VERBOSE("Initializing RBXVariant with obj ", &o);}
     RBXVariant(const char *s) : type(Type::RBXVARIANT_STR) {
-        strl = strlen(s)+1;
-        str = new char[strl];
-        strcpy(str, s);
+        if (s == nullptr) {
+            str = (char*)memalloc(sizeof(char));
+            str[0] = '\0';
+        } else {
+            strl = strlen(s)+1;
+            str = (char*)memalloc((strl+1)*sizeof(char));
+            strcpy(str, s);
+            RBLX_PRINT_VERBOSE("Initializing RBXVariant with str ", str, " of len ", strl);
+        }
     }
     RBXVariant(const char* s, size_t l) : type(Type::RBXVARIANT_STR) {
-        strl = l+1;
-        str = new char[strl];
-        memcpy(str, s, strl);
+        strl = l;
+        if (s == nullptr) {
+            str = (char*)memalloc(sizeof(char));
+            str[0] = '\0';
+        } else {
+            str = (char*)memalloc((strl+1)*sizeof(char));
+            memcpy(str, s, (strl+1)*sizeof(char));
+            RBLX_PRINT_VERBOSE("Initializing RBXVariant with str ", str, " of len ", strl);
+        }
     }
-    RBXVariant(void* p) : type(Type::RBXVARIANT_PTR), ptr(p) {}
-    RBXVariant(RBXVariant& other) : type(other.type) {
+    RBXVariant(void* p) : type(Type::RBXVARIANT_PTR), ptr(p) { RBLX_PRINT_VERBOSE("Initializing RBXVariant with ptr ", ptr); }
+    RBXVariant(const RBXVariant& other) : type(other.type) {
         switch (type) {
         case Type::RBXVARIANT_BOOL:
             boolean = other.boolean;
@@ -611,7 +642,8 @@ public:
         case Type::RBXVARIANT_STR:
             strl = other.strl;
             str = new char[strl+1];
-            memcpy(str,other.str,strl);
+            memcpy(str,other.str,(strl+1)*sizeof(char));
+            RBLX_PRINT_VERBOSE("Copying string from other variant: size ",strl," and content ",str);
             break;
         case Type::RBXVARIANT_PTR:
             ptr = other.ptr;
@@ -619,13 +651,41 @@ public:
             break;
         }
     }
+    RBXVariant& operator=(const RBXVariant& other) {
+        type = other.type;
+        switch (type) {
+        case Type::RBXVARIANT_BOOL:
+            boolean = other.boolean;
+            break;
+        case Type::RBXVARIANT_INT:
+            integer = other.integer;
+            break;
+        case Type::RBXVARIANT_NUM:
+            number = other.number;
+            break;
+        case Type::RBXVARIANT_OBJ:
+            obj = other.obj;
+            break;
+        case Type::RBXVARIANT_STR:
+            strl = other.strl;
+            str = (char*)memalloc((strl+1)*sizeof(char));
+            memcpy(str,other.str,(strl+1)*sizeof(char));
+            RBLX_PRINT_VERBOSE("Copying string from other variant: size ",strl," and content ",str);
+            break;
+        case Type::RBXVARIANT_PTR:
+            ptr = other.ptr;
+        default:
+            break;
+        }
+        return *this;
+    }
     ~RBXVariant() {
         switch (type) {
         case Type::RBXVARIANT_OBJ:
             obj.~LuaObject();
             break;
         case Type::RBXVARIANT_STR:
-            delete str;
+            memfree(str);
             break;
         default:
             break;
@@ -702,6 +762,40 @@ class RobloxVMInstance final {
         ::lua_rawsetfield(L, LUA_REGISTRYINDEX, "ROBLOX_VM");
         register_types(L);
         return L;
+    }
+
+    static int lua_getmetatable_override(lua_State *L) {
+        luau_context ls = L;
+        ls.assert_type_argument(1,"t",LUA_TTABLE,LUA_TUSERDATA);
+        RBLX_PRINT_VERBOSE("getmetatable call");
+        if (ls.is_type(1, LUA_TTABLE) or ls.is_utype(1, -1)) {
+            RBLX_PRINT_VERBOSE("return default");
+            ls.rawget(LUA_REGISTRYINDEX,"default_getmetatable");
+            ls.insert_into(1);
+            ls.call(1, 1);
+            return 1;
+        }
+        RBLX_PRINT_VERBOSE("return nil - protected case");
+        return 0;
+    }
+    static int lua_setmetatable_override(lua_State *L) {
+        luau_context ls = L;
+        ls.assert_type_argument(1,"t",LUA_TTABLE,LUA_TUSERDATA);
+        if (!ls.has_argument(2)) 
+            ls.push_object();
+        else 
+            ls.assert_type_argument(2,"mt",LUA_TTABLE,LUA_TNIL);
+        
+        RBLX_PRINT_VERBOSE("setmetatable call");
+
+        if (ls.is_type(1, LUA_TTABLE) or ls.is_utype(1, -1)) {
+            RBLX_PRINT_VERBOSE("return default");
+            ls.rawget(LUA_REGISTRYINDEX,"default_setmetatable");
+            ls.insert_into(1);
+            ls.call(2, 0);
+        }
+        RBLX_PRINT_VERBOSE("return nil - protected case");
+        return 0;
     }
 public:
     RobloxVMInstance(lua_State* main);

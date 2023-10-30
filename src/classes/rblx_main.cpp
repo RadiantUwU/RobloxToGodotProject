@@ -3,6 +3,7 @@
 #include "rblx_main.hpp"
 #include "rblx_instance.hpp"
 #include "rblx_events.hpp"
+#include "rblx_debug.hpp"
 
 namespace godot {
 
@@ -262,7 +263,9 @@ RBXVariant luau_context::as_object() {
             const char *s;
             size_t l;
             s = ::lua_tolstring(L, -1, &l);
+            RBLX_PRINT_VERBOSE("RBXVariant writing with ", s, " and length of", l);
             v = RBXVariant(s, l);
+            RBLX_PRINT_VERBOSE("RBXVariant written with ", v.get_slen());
         }
         break;
     case LUA_TLIGHTUSERDATA:
@@ -293,7 +296,9 @@ RBXVariant luau_context::as_object(int idx) {
             const char *s;
             size_t l;
             s = ::lua_tolstring(L, idx, &l);
+            RBLX_PRINT_VERBOSE("RBXVariant writing with ", s, " and length of", l);
             v = RBXVariant(s, l);
+            RBLX_PRINT_VERBOSE("RBXVariant written with ", v.get_str());
         }
         break;
     case LUA_TLIGHTUSERDATA:
@@ -340,29 +345,43 @@ void RobloxVMInstance::register_types(lua_State *L) { // TODO: add __type
     ctx.setmetatable(-2);
     ctx.rawset(LUA_REGISTRYINDEX,"INSTANCE_REFS");
     ctx.newmetatable_type(ctx.UD_TINSTANCE);
+    ctx.set_dtor(ctx.UD_TINSTANCE, Instance::delete_instance);
     ctx.push_object(&Instance::lua_static_get,"Instance::__index");
     ctx.rawset(-2, "__index");
     ctx.push_object(&Instance::lua_static_set,"Instance::__newindex");
     ctx.rawset(-2, "__newindex");
+    ctx.push_object(&Instance::lua_static_tostring,"Instance::__tostring");
+    ctx.rawset(-2, "__tostring");
+    ctx.push_object("Instance");
+    ctx.rawset(-2, "__type");
     ctx.pop_stack(1);
 }
 void RobloxVMInstance::register_genv(lua_State *L) {
     luau_context ctx = L;
     ctx.push_object();
-    ctx.rawset(LUA_GLOBALSINDEX,"vector"); // deyeet
+    ctx.setglobal("vector"); // deyeet
 
     ctx.new_table();
     ctx.push_object(&Instance::new_instance,"Instance::new");
     ctx.rawset(-2,"new");
-    ctx.rawset(LUA_GLOBALSINDEX,"Instance");
+    ctx.freeze(-1);
+    ctx.setglobal("Instance");
+
+    ctx.push_object(&RobloxVMInstance::lua_getmetatable_override,"<protected getmetatable>");
+    RBLX_PRINT_VERBOSE(ctx.as_pointer_hash(-1));
+    ctx.setglobal("getmetatable");
+    ctx.push_object(&RobloxVMInstance::lua_setmetatable_override,"<protected setmetatable>");
+    RBLX_PRINT_VERBOSE(ctx.as_pointer_hash(-1));
+    ctx.setglobal("setmetatable");
 }
 RobloxVMInstance::RobloxVMInstance(lua_State *main) {
-    main_synchronized = new luau_State(this, main);
+    main_synchronized = (luau_State*)memalloc(sizeof(luau_State));
+    new(main_synchronized) luau_State(this, main);
     register_types(main);
     register_genv(main);
 }
 RobloxVMInstance::~RobloxVMInstance() {
-    delete main_synchronized;
+    memfree(main_synchronized);
 }
 
 }

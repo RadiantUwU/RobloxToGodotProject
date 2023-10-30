@@ -32,8 +32,8 @@ protected:
     HashMap<String, RBXScriptSignal*> attribute_signals;
     HashMap<String, RBXScriptSignal*> property_signals;
     Vector<int64_t> refs;
-    Instance* parent;// Properties
-    LuaString Name;// Propertiesaa
+    Instance* parent = nullptr;// Properties
+    LuaString Name;// Properties
     int64_t network_id;
     RobloxVMInstance *VM;
     bool parent_locked = false;
@@ -55,6 +55,7 @@ public:
 
     static int lua_static_get(lua_State *L);
     static int lua_static_set(lua_State *L);
+    static int lua_static_tostring(lua_State *L);
 
     // Lua functions
     static int AddTag(lua_State *L);
@@ -100,6 +101,7 @@ public:
     RBXScriptSignal *Destroying;
 
     static int new_instance(lua_State *L);
+    static void delete_instance(lua_State *L, void *i);
 };
 
 }

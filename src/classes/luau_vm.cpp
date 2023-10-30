@@ -71,11 +71,14 @@ LuauVM::LuauVM() {
     L = lua_newstate(lua_alloc, nullptr);
     lua_setnode(L, this);
     create_metatables();
-    vm = new RobloxVMInstance(L);
+    open_all_libraries();
+    vm = (RobloxVMInstance*)memalloc(sizeof(RobloxVMInstance));
+    new (vm) RobloxVMInstance(L);
 }
 
 LuauVM::~LuauVM() {
-    delete vm;
+    vm->~RobloxVMInstance();
+    memfree(vm);
 }
 
 void LuauVM::_bind_methods() {
@@ -171,8 +174,8 @@ int lua_loadstring(lua_State* L)
 
 int luaopen_base_luau(lua_State *L) {
     int nret = ::luaopen_base(L);
-    ::lua_pushcfunction(L, godot_print, "print");
-    ::lua_rawsetfield(L, LUA_GLOBALSINDEX, "print");
+    //::lua_pushcfunction(L, godot_print, "print");
+    //::lua_rawsetfield(L, LUA_GLOBALSINDEX, "print");
     ::lua_pushcfunction(L, lua_loadstring, "loadstring");
     ::lua_rawsetfield(L, LUA_GLOBALSINDEX, "loadstring");
     return nret;
