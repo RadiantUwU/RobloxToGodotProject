@@ -1,3 +1,4 @@
+#include "rblx_main.hpp"
 #include <classes/luau_vm.h>
 
 #include <cstdlib>
@@ -8,6 +9,7 @@
 #include <lua.h>
 #include <lualib.h>
 #include <utils.h>
+#include "rblx_main.hpp"
 
 
 
@@ -69,10 +71,11 @@ LuauVM::LuauVM() {
     L = lua_newstate(lua_alloc, nullptr);
     lua_setnode(L, this);
     create_metatables();
+    vm = new RobloxVMInstance(L);
 }
 
 LuauVM::~LuauVM() {
-    lua_close(L);
+    delete vm;
 }
 
 void LuauVM::_bind_methods() {
@@ -100,10 +103,6 @@ int metatable_object__eq(lua_State *L) {
     return 1;
 }
 
-int metatable_instance__index(lua_State *L) {
-    return 0;
-}
-
 void LuauVM::create_metatables() {
     luaL_newmetatable("object");
     
@@ -114,16 +113,6 @@ void LuauVM::create_metatables() {
 
     ::lua_pushcfunction(L, metatable_object__eq, NULL);
     ::lua_rawsetfield(L, -2, "__eq");
-
-
-    luaL_newmetatable("Instance");
-
-    ::lua_pushstring(L, "Instance");
-    ::lua_rawsetfield(L, -2, "__type");
-    
-    //::lua_pushcfunction(L, metatable_instance__index, NULL);
-    ::lua_rawsetfield(L, -2, "__index");
-    lua_pop(L, 2);
 }
 
 

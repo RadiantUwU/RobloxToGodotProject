@@ -319,7 +319,7 @@ RBXVariant luau_context::to_object(int idx) {
     return v;
 }
 
-void RobloxVMInstance::register_types(lua_State *L) {
+void RobloxVMInstance::register_types(lua_State *L) { // TODO: add __type
     luau_context ctx = L;
     ctx.push_object();
     ctx.rawset(LUA_GLOBALSINDEX,"vector"); // deyeet
