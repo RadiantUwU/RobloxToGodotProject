@@ -14,6 +14,9 @@ luau_State::luau_State(RobloxVMInstance *VM) {
     ::lua_newtable(L);
     ::lua_rawsetfield(L, LUA_REGISTRYINDEX, "USERDATA_METATABLES");
 }
+luau_State::~luau_State() {
+    ::lua_close(this->L);
+}
 
 LuaObject::LuaObject(luau_State *L) {
     luau_context state = L;
@@ -43,17 +46,27 @@ void LuaObject::get(luau_State *to) {
     luau_context to_ = to;
     to_.dont_clear_stack();
     origin.push_ref(ref);
-    switch (origin.get_type(-1)) {
+    switch (origin.get_type(-1)) { // TODO: fix this janky mess
         case LUA_TTHREAD:
         case LUA_TNIL:
             to_.push_object(); // nil
             break;
         case LUA_TBOOLEAN:
-        case LUA_TNUMBER:
-        case LUA_TSTRING:
-        case LUA_TLIGHTUSERDATA:
-            to_.push_object(origin.to_object());
+            to_.push_object((bool)origin.to_object());
             break;
+        case LUA_TNUMBER:
+            to_.push_object((double)origin.to_object());
+            break;
+        case LUA_TSTRING:{
+            RBXVariant v = origin.to_object();
+            to_.push_object(v.get_str(),(size_t)v.get_slen());
+            break;
+        }
+        case LUA_TLIGHTUSERDATA: {
+            RBXVariant v = origin.to_object();
+            to_.push_object((void*)v);
+            break;
+        }
         case LUA_TFUNCTION:
             if (origin.is_cfunction(-1)) {
                 to_.push_object(origin.as_cfunc());
@@ -77,24 +90,31 @@ void LuaObject::get(luau_State *to) {
                     key = iter.rawiter(-1, key);
                     if (key == -1) break;
                     if (!iter.is_type(-2, LUA_TSTRING)) continue; // automatic popping of the key and value
-                    to_.push_object(origin.to_object(-2)); // pop key leaving only value on stack
+                    if (1) {
+                        RBXVariant _k = origin.to_object(-2);
+                        to_.push_object(_k); // pop key leaving only value on stack
+                    }
                     switch (origin.get_type(-1)) {
                     case LUA_TNUMBER:
                     case LUA_TBOOLEAN:
                     case LUA_TLIGHTUSERDATA:
                     case LUA_TSTRING:
-                    case LUA_TNIL: // theoretically impossible because key wouldnt exist but have it as a case anyway
-                        to_.push_object(origin.to_object(-1)); // let auto do its thing
-                        to_.set(); //
+                    case LUA_TNIL:{ // theoretically impossible because key wouldnt exist but have it as a case anyway
+                        RBXVariant _v = origin.to_object(-1);
+                        to_.push_object(_v); // let auto do its thing
+                        to_.set(-3);
                         break;
+                    }
+                        
                     case LUA_TTABLE:
                         for (int tbl_idx : to->tables_in_conversion) {
                             if (origin.rawequal(-1,tbl_idx)) {
                                 to_.pop_stack(1); // pop the key
-                                continue; // delete luau_context upon reloading loop. causes a stack pop in origin
+                                goto continue_out; // delete luau_context upon reloading loop. causes a stack pop in origin
                             }
-                            to_.push_object(origin.to_object(-1));
-                            to_.set();
+                            RBXVariant _v = origin.to_object(-1);
+                            to_.push_object(_v);
+                            to_.set(-3);
                             break;
                         }
                     case LUA_TUSERDATA:
@@ -104,13 +124,14 @@ void LuaObject::get(luau_State *to) {
                     case LUA_TFUNCTION:
                         if (iter.is_cfunction(-1)) {
                             to_.push_object(origin.as_cfunc());
-                            to_.set();
+                            to_.set(-3);
                         } else {
                             to_.pop_stack(1);
                             continue;
                         }
                         break;
                     }
+                    continue_out:
                 }
             } else {
                 origin.pop_stack(1);
@@ -122,24 +143,30 @@ void LuaObject::get(luau_State *to) {
                     if (key == -1) break;
                     if (key != lastkey+1) break;
                     if (!iter.is_type(-2, LUA_TNUMBER)) continue; // automatic popping of the key and value
-                    to_.push_object(origin.to_object(-2)); // pop key leaving only value on stack
+                    {
+                        RBXVariant v = origin.to_object(-2)
+                        to_.push_object(v); // pop key leaving only value on stack
+                    }
                     switch (origin.get_type(-1)) {
                     case LUA_TNUMBER:
                     case LUA_TBOOLEAN:
                     case LUA_TLIGHTUSERDATA:
                     case LUA_TSTRING:
-                    case LUA_TNIL: // theoretically impossible because key wouldnt exist but have it as a case anyway
-                        to_.push_object(origin.to_object(-1)); // let auto do its thing
-                        to_.set(); //
+                    case LUA_TNIL:{ // theoretically impossible because key wouldnt exist but have it as a case anyway
+                        RBXVariant _v = origin.to_object(-1);
+                        to_.push_object(_v); // let auto do its thing
+                        to_.set(-3);
                         break;
+                    }
                     case LUA_TTABLE:
                         for (int tbl_idx : to->tables_in_conversion) {
                             if (origin.rawequal(-1,tbl_idx)) {
                                 to_.pop_stack(1); // pop the key
                                 continue; // delete luau_context upon reloading loop. causes a stack pop in origin
                             }
-                            to_.push_object(origin.to_object(-1));
-                            to_.set();
+                            RBXVariant v = origin.to_object(-1);
+                            to_.push_object(v);
+                            to_.set(-3);
                             break;
                         }
                     case LUA_TUSERDATA:
@@ -149,7 +176,7 @@ void LuaObject::get(luau_State *to) {
                     case LUA_TFUNCTION:
                         if (iter.is_cfunction(-1)) {
                             to_.push_object(origin.as_cfunc());
-                            to_.set();
+                            to_.set(-3);
                         } else {
                             to_.pop_stack(1);
                             continue;
@@ -179,7 +206,7 @@ void luau_context::push_object(RBXVariant& v) {
         ::lua_pushnumber(L, (double)v);
         break;
     case RBXVariant::Type::RBXVARIANT_OBJ:
-        push_object(L, (LuaObject&)v);
+        push_object((LuaObject&)v);
         break;
     case RBXVariant::Type::RBXVARIANT_STR:
         ::lua_pushlstring(L, v.get_str(), v.get_slen());
@@ -206,7 +233,7 @@ void luau_context::push_object(RBXVariant& v, int idx) {
         ::lua_pushnumber(L, (double)v);
         break;
     case RBXVariant::Type::RBXVARIANT_OBJ:
-        push_object(L, (LuaObject&)v);
+        push_object((LuaObject&)v);
         break;
     case RBXVariant::Type::RBXVARIANT_STR:
         ::lua_pushlstring(L, v.get_str(), v.get_slen());
@@ -233,7 +260,7 @@ RBXVariant luau_context::as_object() {
         break;
     case LUA_TSTRING: {
             const char *s;
-            int l;
+            size_t l;
             s = ::lua_tolstring(L, -1, &l);
             v = RBXVariant(s, l);
         }
@@ -244,10 +271,11 @@ RBXVariant luau_context::as_object() {
     case LUA_TTABLE:
     case LUA_TUSERDATA:
         ::lua_pushvalue(L, -1);
-        v = RBXVariant(LuaObject(ls));
+        LuaObject lo = LuaObject(ls);
+        v = RBXVariant(lo);
         break;
     }
-    return v
+    return v;
 }
 RBXVariant luau_context::as_object(int idx) {
     RBXVariant v;
@@ -263,7 +291,7 @@ RBXVariant luau_context::as_object(int idx) {
         break;
     case LUA_TSTRING: {
             const char *s;
-            int l;
+            size_t l;
             s = ::lua_tolstring(L, idx, &l);
             v = RBXVariant(s, l);
         }
@@ -274,28 +302,21 @@ RBXVariant luau_context::as_object(int idx) {
     case LUA_TTABLE:
     case LUA_TUSERDATA:
         ::lua_pushvalue(L, idx);
-        v = RBXVariant(LuaObject(ls));
+        LuaObject lo = LuaObject(ls);
+        v = RBXVariant(lo);
         break;
     }
-    return v
+    return v;
 }
 RBXVariant luau_context::to_object() {
     RBXVariant v = as_object();
     pop_stack(1);
-    return v
+    return v;
 }
 RBXVariant luau_context::to_object(int idx) {
     RBXVariant v = as_object(idx);
     remove_stack(idx);
-    return v
-}
-
-luau_State::luau_State(RobloxVMInstance* vm) {
-    this->vm = vm;
-    this->L = vm->create_lua_state();
-}
-luau_State::~luau_State() {
-    ::lua_close(this->L);
+    return v;
 }
 
 void RobloxVMInstance::register_types(lua_State *L) {
@@ -314,16 +335,16 @@ void RobloxVMInstance::register_types(lua_State *L) {
     ctx.rawset(-2, "__index");
     ctx.pop_stack(1);
 
-    ls.new_table();
-    ls.new_table();
-    ls.push_object("v");
-    ls.rawset(-2,"__mode");
-    ls.setmetatable(-2);
-    ls.rawset(LUA_REGISTRYINDEX,"INSTANCE_REFS");
+    ctx.new_table();
+    ctx.new_table();
+    ctx.push_object("v");
+    ctx.rawset(-2,"__mode");
+    ctx.setmetatable(-2);
+    ctx.rawset(LUA_REGISTRYINDEX,"INSTANCE_REFS");
 }
-RobloxVMInstance::RobloxVMInstance() {
-    main_synchronized = new luau_State(this);
-    register_types(main_synchronized->get_state());
+RobloxVMInstance::RobloxVMInstance(lua_State *main) {
+    main_synchronized = new luau_State(this, main);
+    register_types(main);
 }
 RobloxVMInstance::~RobloxVMInstance() {
     delete main_synchronized;
