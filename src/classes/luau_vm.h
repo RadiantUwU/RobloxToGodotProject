@@ -12,7 +12,7 @@
 #include "rblx_main.hpp"
 
 
-#define GDLUAU_REGISTRY_NODE_KEY "gdluau_node"
+#define RobloxToGodotProject_REGISTRY_NODE_KEY "RobloxToGodotProject_node"
 
 
 namespace godot {
@@ -56,7 +56,7 @@ public:
 
     // Bindings
 
-    #pragma region GDLuau
+    #pragma region RobloxToGodotProject
 
     void lua_pushvariant(const Variant &var);
     void lua_pusharray(const Array &array);

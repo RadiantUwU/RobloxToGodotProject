@@ -93,7 +93,7 @@ void LuauVM::_bind_passthrough_methods() {
 }
 
 
-#pragma region GDLuau
+#pragma region RobloxToGodotProject
 
 
 String (LuauVM::luaL_tostring)(int index) {

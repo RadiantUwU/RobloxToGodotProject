@@ -14,13 +14,13 @@
 
 
 void lua_setnode(lua_State* L, godot::LuauVM* node) {
-    lua_pushstring(L, GDLUAU_REGISTRY_NODE_KEY);
+    lua_pushstring(L, RobloxToGodotProject_REGISTRY_NODE_KEY);
     lua_pushlightuserdata(L, node);
     lua_settable(L, LUA_REGISTRYINDEX);
 }
 
 godot::LuauVM* lua_getnode(lua_State* L) {
-    lua_pushstring(L, GDLUAU_REGISTRY_NODE_KEY);
+    lua_pushstring(L, RobloxToGodotProject_REGISTRY_NODE_KEY);
     lua_gettable(L, LUA_REGISTRYINDEX);
     if (!lua_islightuserdata(L, -1)) {
         lua_pop(L, 1);
