@@ -254,20 +254,20 @@ jobs:
         shell: sh
         run: |
           PATH=/opt/buildroot/bin:$PATH scons target='${{ matrix.opts.target }}' platform='${{ matrix.opts.platform }}' arch='${{ matrix.opts.arch }}' ${{ matrix.opts.args }}
-          ls -l demo/addons/gdluau/bin/
+          ls -l demo/addons/RobloxToGodotProject/bin/
       - name: Strip bins
         if: "!startsWith(matrix.opts.identifier, 'windows-') && startsWith(matrix.opts.arch, 'x86_')"
         shell: sh
         run: |
-          strip demo/addons/gdluau/bin/*
+          strip demo/addons/RobloxToGodotProject/bin/*
       - name: Prepare artifact
         shell: sh
         env:
           SCONS_CACHE: ${{github.workspace}}/.scons_cache/
           SCONS_CACHE_LIMIT: 7168
         run: |
-          rm -rf ${{ github.workspace }}/demo/.g* ${{ github.workspace }}/demo/project.godot ${{ github.workspace }}/demo/addons/gdluau/bin/.gitignore
-          cp -n '${{ github.workspace }}/README.md' '${{ github.workspace }}/LICENSE' ${{ github.workspace }}/demo/addons/gdluau
+          rm -rf ${{ github.workspace }}/demo/.g* ${{ github.workspace }}/demo/project.godot ${{ github.workspace }}/demo/addons/RobloxToGodotProject/bin/.gitignore
+          cp -n '${{ github.workspace }}/README.md' '${{ github.workspace }}/LICENSE' ${{ github.workspace }}/demo/addons/RobloxToGodotProject
       - name: Upload artifact
         uses: actions/upload-artifact@v2
         with:

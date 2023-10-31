@@ -238,13 +238,13 @@ int lua_pushcallable_method(lua_State *L) {
 
 void lua_pushcallable(lua_State *L, const godot::Callable &callable) {
     if (callable.is_custom()) {
-        godot::UtilityFunctions::push_warning("[GDLUAU] Custom Callables not implemented");
+        godot::UtilityFunctions::push_warning("[RobloxToGodotProject] Custom Callables not implemented");
         lua_pushnil(L);
         return;
     }
 
     if (callable.is_null()) {
-        godot::UtilityFunctions::push_warning("[GDLUAU] Trying push invalid Callable");
+        godot::UtilityFunctions::push_warning("[RobloxToGodotProject] Trying push invalid Callable");
         lua_pushnil(L);
         return;
     }
