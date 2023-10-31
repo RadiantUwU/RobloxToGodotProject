@@ -138,10 +138,10 @@ jobs:
         run: |
           mkdir -p scripts/godot/templates/
 
-          mv scripts/godot/bin/libgdluau.linux.template_release.x86_64 scripts/godot/templates/linux_release.x86_64 || true
-          mv scripts/godot/bin/libgdluau.linux.template_debug.x86_64 scripts/godot/templates/linux_debug.x86_64 || true
-          mv scripts/godot/bin/libgdluau.linux.template_release.x86_32 scripts/godot/templates/linux_release.x32_64 || true
-          mv scripts/godot/bin/libgdluau.linux.template_debug.x86_32 scripts/godot/templates/linux_debug.x86_32 || true
+          mv scripts/godot/bin/libRobloxToGodotProject.linux.template_release.x86_64 scripts/godot/templates/linux_release.x86_64 || true
+          mv scripts/godot/bin/libRobloxToGodotProject.linux.template_debug.x86_64 scripts/godot/templates/linux_debug.x86_64 || true
+          mv scripts/godot/bin/libRobloxToGodotProject.linux.template_release.x86_32 scripts/godot/templates/linux_release.x32_64 || true
+          mv scripts/godot/bin/libRobloxToGodotProject.linux.template_debug.x86_32 scripts/godot/templates/linux_debug.x86_32 || true
 
           
           rm -rf scripts/godot/bin/*
