@@ -67,6 +67,7 @@ module_env.Append(LIBS=[library_name])
 sources = Glob("*.cpp")
 sources.append(Glob("src/*.cpp"))
 sources.append(Glob("src/classes/*.cpp"))
+sources.append(Glob("src/classes/roblox/core/*.cpp"))
 
 
 env["suffix"] = env["suffix"].replace(".dev", "").replace(".double", "").replace(".simulator", "")

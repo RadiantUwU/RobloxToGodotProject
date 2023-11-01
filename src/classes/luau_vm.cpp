@@ -1,4 +1,3 @@
-#include "rblx_main.hpp"
 #include <classes/luau_vm.h>
 
 #include <cstdlib>
@@ -9,7 +8,7 @@
 #include <lua.h>
 #include <lualib.h>
 #include <utils.h>
-#include "rblx_main.hpp"
+#include "roblox/core/rblx_main.hpp"
 
 
 
@@ -189,7 +188,6 @@ static const luaL_Reg lualibs[] = {
     {LUA_OSLIBNAME, luaopen_os},
     {LUA_STRLIBNAME, luaopen_string},
     {LUA_MATHLIBNAME, luaopen_math},
-    {LUA_VECLIBNAME, luaopen_vector},
     {LUA_DBLIBNAME, luaopen_debug},
     {LUA_UTF8LIBNAME, luaopen_utf8},
     {LUA_BITLIBNAME, luaopen_bit32},

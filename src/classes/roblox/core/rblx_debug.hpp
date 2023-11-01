@@ -1,6 +1,6 @@
 #ifndef RBLX_DEBUG
 #define RBLX_DEBUG
-//#define VERBOSE_RBLX
+#define VERBOSE_RBLX
 #ifdef VERBOSE_RBLX
 #include <iostream>
 namespace godot {

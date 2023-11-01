@@ -9,7 +9,7 @@
 #include <classes/luau_function.h>
 #include <utils.h>
 #include <vector_lib.h>
-#include "rblx_main.hpp"
+#include "roblox/core/rblx_main.hpp"
 
 
 #define RobloxToGodotProject_REGISTRY_NODE_KEY "RobloxToGodotProject_node"

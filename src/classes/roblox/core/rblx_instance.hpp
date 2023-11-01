@@ -4,6 +4,7 @@
 #include <godot_cpp/variant/variant.hpp>
 #include <godot_cpp/templates/vector.hpp>
 #include <godot_cpp/templates/hash_map.hpp>
+#include <godot_cpp/templates/hash_set.hpp>
 
 #include "rblx_basic_types.hpp"
 #include "rblx_main.hpp"
@@ -28,16 +29,20 @@ class Instance {
 protected:
     friend class RobloxVMInstance;
     Vector<Instance*> children;
-    Vector<String> tags;
-    HashMap<String, RBXScriptSignal*> attribute_signals;
-    HashMap<String, RBXScriptSignal*> property_signals;
+    HashSet<LuaString, LuaStringHasher> tags;
+    HashMap<LuaString, RBXVariant, LuaStringHasher> attributes;
+    HashMap<LuaString, RBXScriptSignal*, LuaStringHasher> attribute_signals;
+    HashMap<LuaString, RBXScriptSignal*, LuaStringHasher> property_signals;
     Vector<int64_t> refs;
     Instance* parent = nullptr;// Properties
     LuaString Name;// Properties
-    int64_t network_id;
     RobloxVMInstance *VM;
     bool parent_locked = false;
+    void _clone_object(Instance*);
+    virtual Instance* clone_object(); // TODO: mark this as abstract
+    virtual bool is_a(const LuaString& s);
 public:
+    int64_t network_id = (size_t)(void*)this;
     Instance(RobloxVMInstance *VM);
     virtual ~Instance();
 
@@ -47,7 +52,7 @@ public:
     void setName(LuaString newname);
     Instance* getParent();
     void setParent(Instance* newparent);
-    volatile const char* const ClassName = "Instance";
+    const char* volatile const ClassName = "Instance";
     volatile const InstanceType Type = T_INSTANCE; // Internal
 
     virtual int lua_get(lua_State *L);

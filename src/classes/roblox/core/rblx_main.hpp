@@ -11,6 +11,7 @@
 #include <lualib.h>
 #include <mutex>
 #include "rblx_debug.hpp"
+#include "rblx_basic_types.hpp"
 
 namespace godot {
 
@@ -18,8 +19,9 @@ struct RBXVariant;
 class Instance;
 class RobloxVMInstance;
 class luau_State;
-
 class luau_context;
+class RBXScriptConnection;
+class RBXScriptSignal;
 
 class LuaObject final {
     luau_State *ls;
@@ -28,10 +30,12 @@ class LuaObject final {
     friend class luau_context;
     LuaObject(luau_State *L);
     LuaObject(luau_State *L, int idx);
-    void get(luau_State *to);
+    void get(luau_State *to) const;
 public:
-    LuaObject(LuaObject& o);
+    LuaObject(const LuaObject& o);
     ~LuaObject();
+    bool operator==(const LuaObject& o) const;
+    bool operator!=(const LuaObject& o) const;
 };
 
 class luau_State final {
@@ -107,6 +111,7 @@ public:
     static constexpr int UD_TVECTOR2INT16 = 37;
     static constexpr int UD_TVECTOR3 = 38;
     static constexpr int UD_TVECTOR3INT16 = 39;
+    static constexpr const char * user_type_nil = "userdata";
     static constexpr const char * user_types[] = {
         nullptr, // reserved
         "Axes",
@@ -160,6 +165,7 @@ public:
         last_stack_size = lua_gettop(L);
         lua_pushthread(L);
         thr_ref = lua_ref(L, -1);
+        lua_pop(L, 1);
     }
     luau_context(luau_State* state, lua_State *thr) {
         ls = state;
@@ -168,6 +174,7 @@ public:
         last_stack_size = lua_gettop(L);
         lua_pushthread(L);
         thr_ref = lua_ref(L, -1);
+        lua_pop(L, 1);
     }
     luau_context(luau_State *state) {
         ls = state;
@@ -176,6 +183,7 @@ public:
         last_stack_size = lua_gettop(L);
         lua_pushthread(L);
         thr_ref = lua_ref(L, -1);
+        lua_pop(L, 1);
     }
     ~luau_context() {
         clear_stack();
@@ -192,25 +200,33 @@ public:
     inline void push_object(std::nullptr_t) { ::lua_pushnil(L); }
     inline void push_object(bool b) { ::lua_pushboolean(L, b); }
     inline void push_object(int64_t integer) { ::lua_pushinteger(L, integer); }
+    inline void push_object(int integer) { ::lua_pushinteger(L, integer); }
     inline void push_object(double number) { ::lua_pushnumber(L, number); }
     inline void push_object(lua_State *thr) { ::lua_pushthread(thr); ::lua_xmove(thr, L, 1); };
     inline void push_object(const char* str) { ::lua_pushstring(L, str); }
     inline void push_object(const char* str, size_t len) { ::lua_pushlstring(L, str, len); }
     inline void push_object(lua_CFunction f, const char* fname = "<C++ context>") { lua_pushcfunction(L, f, fname); }
-    inline void push_object(void* p) {::lua_pushlightuserdata(L, p); }
+    inline void push_object(void* p) { ::lua_pushlightuserdata(L, p); }
     inline void push_cclosure(lua_CFunction f, int nup, const char* fname = "<C++ context>") { lua_pushcclosure(L, f, fname, nup); }
-    inline void push_object(LuaObject& obj) { obj.get(ls); }
-    void push_object(RBXVariant& v);
+    inline void push_object(const LuaObject& obj) { obj.get(ls); }
+    inline void push_object(const LuaString& s) { ::lua_pushlstring(L, s.s, s.l); }
+    void push_object(const RBXVariant& v);
+    void push_object(RBXScriptSignal* signal);
+    void push_object(Instance* i);
     inline void push_object(bool b, int idx) { ::lua_pushboolean(L, b); ::lua_insert(L, idx); }
     inline void push_object(int64_t integer, int idx) { ::lua_pushinteger(L, integer); ::lua_insert(L, idx); }
+    inline void push_object(int integer, int idx) { ::lua_pushinteger(L, integer); ::lua_insert(L, idx); }
     inline void push_object(double number, int idx) { ::lua_pushnumber(L, number); ::lua_insert(L, idx); }
     inline void push_object(lua_State *thr, int idx) { ::lua_pushthread(thr); ::lua_xmove(thr, L, 1); ::lua_insert(L, idx); };
     inline void push_object(const char* str, int idx) { ::lua_pushstring(L, str); ::lua_insert(L, idx); }
     inline void push_object(const char* str, size_t len, int idx) { ::lua_pushlstring(L, str, len); ::lua_insert(L, idx); }
-    inline void push_object(LuaObject& obj, int idx) { obj.get(ls); ::lua_insert(L, idx); }
+    inline void push_object(const LuaObject& obj, int idx) { obj.get(ls); ::lua_insert(L, idx); }
     inline void push_object(lua_CFunction f, int idx, const char* fname = "<C++ context>") { lua_pushcfunction(L, f, fname); ::lua_insert(L, idx); }
-    inline void push_object(void* p, int idx) {::lua_pushlightuserdata(L, p); ::lua_insert(L, idx); }
-    void push_object(RBXVariant& v, int idx);
+    inline void push_object(void* p, int idx) { ::lua_pushlightuserdata(L, p); ::lua_insert(L, idx); }
+    inline void push_object(const LuaString& s, int idx) { ::lua_pushlstring(L, s.s, s.l); ::lua_insert(L, idx); }
+    void push_object(const RBXVariant& v, int idx);
+    void push_object(RBXScriptSignal* signal, int idx);
+    void push_object(Instance* i, int idx);
     template <typename T, typename... Others>
     inline int push_objects(T o, Others... others) { push_object(o); return push_objects(others...)+1; }
     template <typename T>
@@ -243,13 +259,14 @@ public:
         int last_stack_size = get_stack_size();
         T* p = new (::lua_newuserdatatagged(L, sizeof(T), utype)) T(args...);
         ::lua_setuserdatatag(L, -1, utype);
-        RBLX_PRINT_VERBOSE("STACK SIZE BEFORE: ",last_stack_size, " AFTER(expected before+1): ", get_stack_size());
         rawget(LUA_REGISTRYINDEX,"USERDATA_METATABLES");
         rawget(-1,utype);
-        RBLX_PRINT_VERBOSE("USER METATABLE: ",as_pointer_hash(-1));
         setmetatable(-3);
         pop_stack(1);
-        RBLX_PRINT_VERBOSE("USER TAG: ",get_userdata_type(-1));
+        rawget(LUA_REGISTRYINDEX,"USERDATA_REFS");
+        push_value(-2);
+        rawset(-2,(size_t)(void*)p);
+        pop_stack(1);
         return p;
     }
     template <typename T>
@@ -260,14 +277,12 @@ public:
         ::lua_setuserdatatag(L, -1, UD_TINSTANCE);
         rawget(LUA_REGISTRYINDEX,"USERDATA_METATABLES");
         rawget(-1,UD_TINSTANCE);
-        RBLX_PRINT_VERBOSE("USER METATABLE: ",as_pointer_hash(-1));
         setmetatable(-3);
         pop_stack(1);
-        rawget(LUA_REGISTRYINDEX,"INSTANCE_REFS");
+        rawget(LUA_REGISTRYINDEX,"USERDATA_REFS");
         push_value(-2);
         rawset(-2,(size_t)(void*)p);
         pop_stack(1);
-        RBLX_PRINT_VERBOSE("USER TAG: ",get_userdata_type(-1));
         return p;
     }
     template <typename T>
@@ -331,6 +346,24 @@ public:
             errorf("missing argument #%d to '%s' (%s|%s expected)", argn, argname, lua_typename(L, type1), lua_typename(L, type2));
         if (!is_type(argn, type1) and !is_type(argn, type2)) 
             errorf("invalid argument #%d to '%s' (%s|%s expected, got %s)", argn, argname, lua_typename(L, type1), lua_typename(L, type2), get_typename(argn));
+    }
+    inline void assert_stack_size(int x) {
+        if (lua_gettop(L) != x)
+            errorf("expected %d arguments, got %d",x,lua_gettop(L));
+    }
+    inline void assert_stack_size(int req, int opt) {
+        if (lua_gettop(L) > req+opt)
+            errorf("expected %d-%d arguments, got %d",req,req+opt,lua_gettop(L));
+        if (lua_gettop(L) < req)
+            errorf("expected %d-%d arguments, got %d",req,req+opt,lua_gettop(L));
+    }
+    inline void assert_stack_size_vararg(int req) {
+        if (lua_gettop(L) < req)
+            errorf("expected %d arguments minimum, got %d",req,lua_gettop(L));
+    }
+    inline void assert_stack_size_vararg(int req, int opt) {
+        if (lua_gettop(L) < req)
+            errorf("expected %d arguments minimum, got %d",req,lua_gettop(L));
     }
 
     inline void pop_stack(int n) { lua_pop(L, n); }
@@ -549,11 +582,10 @@ public:
         lua_setfenv(L, -2); 
         lua_remove(L, -1);
     }
-    
 
-    inline int new_ref(int idx) { return lua_ref(L, idx); }
-    inline void push_ref(int ref) { lua_getref(L, ref); }
-    inline void delete_ref(int ref) { lua_unref(L, ref); }
+    inline int64_t new_ref(int idx) { int ref = lua_ref(L, idx); lua_remove(L, idx); return ref; }
+    inline void push_ref(int64_t ref) { lua_getref(L, ref); }
+    inline void delete_ref(int64_t ref) { lua_unref(L, ref); }
 
     inline void move_args(lua_State *to, int amount) {::lua_xmove(L, to, amount);}
     inline void copy_arg(lua_State *to, int idx) {::lua_xpush(L, to, idx); }
@@ -597,10 +629,10 @@ public:
         RBXVARIANT_STR,
         RBXVARIANT_PTR
     } type = Type::RBXVARIANT_NIL;
-    RBXVariant() : type(Type::RBXVARIANT_NIL) { RBLX_PRINT_VERBOSE("Initializing RBXVariant with nil"); }
-    RBXVariant(bool b) : type(Type::RBXVARIANT_BOOL), boolean(b) { RBLX_PRINT_VERBOSE("Initializing RBXVariant with bool ", b); }
-    RBXVariant(int64_t i) : type(Type::RBXVARIANT_INT), integer(i) { RBLX_PRINT_VERBOSE("Initializing RBXVariant with int ", i); }
-    RBXVariant(double n) : type(Type::RBXVARIANT_NUM), number(n) { RBLX_PRINT_VERBOSE("Initializing RBXVariant with num ", n);}
+    RBXVariant() : type(Type::RBXVARIANT_NIL) {}
+    RBXVariant(bool b) : type(Type::RBXVARIANT_BOOL), boolean(b) {}
+    RBXVariant(int64_t i) : type(Type::RBXVARIANT_INT), integer(i) {}
+    RBXVariant(double n) : type(Type::RBXVARIANT_NUM), number(n) {}
     RBXVariant(LuaObject& o) : type(Type::RBXVARIANT_OBJ), obj(o) { RBLX_PRINT_VERBOSE("Initializing RBXVariant with obj ", &o);}
     RBXVariant(const char *s) : type(Type::RBXVARIANT_STR) {
         if (s == nullptr) {
@@ -621,10 +653,9 @@ public:
         } else {
             str = (char*)memalloc((strl+1)*sizeof(char));
             memcpy(str, s, (strl+1)*sizeof(char));
-            RBLX_PRINT_VERBOSE("Initializing RBXVariant with str ", str, " of len ", strl);
         }
     }
-    RBXVariant(void* p) : type(Type::RBXVARIANT_PTR), ptr(p) { RBLX_PRINT_VERBOSE("Initializing RBXVariant with ptr ", ptr); }
+    RBXVariant(void* p) : type(Type::RBXVARIANT_PTR), ptr(p) {}
     RBXVariant(const RBXVariant& other) : type(other.type) {
         switch (type) {
         case Type::RBXVARIANT_BOOL:
@@ -643,7 +674,6 @@ public:
             strl = other.strl;
             str = new char[strl+1];
             memcpy(str,other.str,(strl+1)*sizeof(char));
-            RBLX_PRINT_VERBOSE("Copying string from other variant: size ",strl," and content ",str);
             break;
         case Type::RBXVARIANT_PTR:
             ptr = other.ptr;
@@ -670,7 +700,6 @@ public:
             strl = other.strl;
             str = (char*)memalloc((strl+1)*sizeof(char));
             memcpy(str,other.str,(strl+1)*sizeof(char));
-            RBLX_PRINT_VERBOSE("Copying string from other variant: size ",strl," and content ",str);
             break;
         case Type::RBXVARIANT_PTR:
             ptr = other.ptr;
@@ -691,7 +720,7 @@ public:
             break;
         }
     }
-    operator bool() {
+    operator bool() const {
         switch (type) {
         case Type::RBXVARIANT_NIL: return false;
         case Type::RBXVARIANT_NUM: return number > 0;
@@ -700,7 +729,7 @@ public:
         default: return true;
         }
     }
-    operator int64_t() {
+    operator int64_t() const {
         switch (type) {
         case Type::RBXVARIANT_NIL: return 0;
         case Type::RBXVARIANT_NUM: return (int)number;
@@ -710,7 +739,7 @@ public:
         default: return 1;
         }
     }
-    operator double() {
+    operator double() const {
         switch (type) {
         case Type::RBXVARIANT_NIL: return 0.0;
         case Type::RBXVARIANT_NUM: return number;
@@ -719,21 +748,47 @@ public:
         default: return NAN;
         }
     }
-    operator LuaObject() {
-        return obj;
+    operator LuaObject() const {
+        return LuaObject(obj);
     }
     operator LuaObject&() {
         return obj;
     }
-    int get_slen() {
+    typedef const LuaObject ConstLuaObject;
+    operator ConstLuaObject&() const {
+        return obj;
+    }
+    int get_slen() const {
         return strl;
     }
-    const char *get_str() {
+    const char *get_str() const {
         return str;
     }
-    operator void*() {
+    operator void*() const {
         return ptr;
     }
+    bool operator==(const RBXVariant& other) const {
+        if ((other.type != type) and not ((other.type == Type::RBXVARIANT_INT or other.type == Type::RBXVARIANT_NUM) and (type == Type::RBXVARIANT_INT or type == Type::RBXVARIANT_NUM))) return false;
+        switch (type) {
+        case Type::RBXVARIANT_NIL:
+            return 1;
+        case Type::RBXVARIANT_BOOL:
+            return boolean==other.boolean;
+        case Type::RBXVARIANT_INT:
+        case Type::RBXVARIANT_NUM:
+            return integer==other.integer or number == other.number or integer == other.number or number == other.integer;
+        case Type::RBXVARIANT_STR:
+            if (get_slen() != other.get_slen()) return false;
+            return memcmp(get_str(),other.get_str(),sizeof(char)*get_slen()) == 0;
+        case Type::RBXVARIANT_PTR:
+            return ptr == other.ptr;
+        case Type::RBXVARIANT_OBJ:
+            return obj == other.obj;
+        }
+    }
+    bool operator!=(const RBXVariant& other) const {
+        return not (*this == other);
+    };
 };
 
 class RobloxVMInstance final {
@@ -756,6 +811,7 @@ class RobloxVMInstance final {
     }
     void register_types(lua_State *L);
     void register_genv(lua_State *L);
+    void register_registry(lua_State *L);
     lua_State* create_lua_state() {
         lua_State *L = lua_newstate(lua_alloc, nullptr);
         ::lua_pushlightuserdata(L, this);
@@ -763,40 +819,68 @@ class RobloxVMInstance final {
         register_types(L);
         return L;
     }
-
+    static int lua_typeof(lua_State *L) {
+        luau_function_context lc = L;
+        lc.assert_stack_size(0,1);
+        if (lc.get_stack_size() == 0) {
+            lc.push_object("nil");
+            return 1;
+        }
+        switch (lc.get_type(1)) {
+            case LUA_TNIL:
+            case LUA_TBOOLEAN:
+            case LUA_TNUMBER:
+            case LUA_TSTRING:
+            case LUA_TTABLE:
+            case LUA_TFUNCTION:
+            case LUA_TTHREAD:
+            case LUA_TLIGHTUSERDATA: // you anyways shouldnt have ur hand on this type of object
+                lc.push_object(lc.get_typename(1));
+                break;
+            case LUA_TUSERDATA: {
+                int utype = lc.get_userdata_type(1);
+                if (utype == -1 or utype == 0) {
+                    lc.push_object("userdata");
+                } else {
+                    lc.push_object(lc.get_usertypename(1));
+                }
+                break;
+            }
+            default:
+                RBLX_PRINT_VERBOSE("unknown type??");
+                lc.error("Internal error: unknown type given to typeof");
+        }
+        return 1;
+    }
     static int lua_getmetatable_override(lua_State *L) {
         luau_context ls = L;
+        ls.assert_stack_size(1);
         ls.assert_type_argument(1,"t",LUA_TTABLE,LUA_TUSERDATA);
-        RBLX_PRINT_VERBOSE("getmetatable call");
         if (ls.is_type(1, LUA_TTABLE) or ls.is_utype(1, -1)) {
-            RBLX_PRINT_VERBOSE("return default");
             ls.rawget(LUA_REGISTRYINDEX,"default_getmetatable");
             ls.insert_into(1);
             ls.call(1, 1);
             return 1;
         }
-        RBLX_PRINT_VERBOSE("return nil - protected case");
         return 0;
     }
     static int lua_setmetatable_override(lua_State *L) {
         luau_context ls = L;
+        ls.assert_stack_size(1,2);
         ls.assert_type_argument(1,"t",LUA_TTABLE,LUA_TUSERDATA);
         if (!ls.has_argument(2)) 
             ls.push_object();
         else 
             ls.assert_type_argument(2,"mt",LUA_TTABLE,LUA_TNIL);
-        
-        RBLX_PRINT_VERBOSE("setmetatable call");
 
         if (ls.is_type(1, LUA_TTABLE) or ls.is_utype(1, -1)) {
-            RBLX_PRINT_VERBOSE("return default");
             ls.rawget(LUA_REGISTRYINDEX,"default_setmetatable");
             ls.insert_into(1);
             ls.call(2, 0);
         }
-        RBLX_PRINT_VERBOSE("return nil - protected case");
         return 0;
     }
+
 public:
     RobloxVMInstance(lua_State* main);
     ~RobloxVMInstance();

@@ -5,9 +5,11 @@
 #include <godot_cpp/variant/variant.hpp>
 #include <godot_cpp/templates/hash_map.hpp>
 #include <godot_cpp/templates/vector.hpp>
+#include <godot_cpp/templates/hashfuncs.hpp>
 #include <string.h>
 #include "rblx_debug.hpp"
 namespace godot {
+
 
 struct LuaString {
     char *s;
@@ -79,20 +81,27 @@ struct LuaString {
         }
         return *this;
     }
-    operator const char* () {
+    operator const char* () const {
         return s;
     }
-    bool operator==(std::nullptr_t) {
+    bool operator==(std::nullptr_t) const {
         return s == nullptr;
     }
-    bool operator==(const char* s) {
+    bool operator==(const char* s) const {
         return strcmp(s, this->s) == 0;
     }
-    bool operator==(const LuaString& o) {
+    bool operator==(const LuaString& o) const {
         return o.l==l and memcmp(o.s, s, l);
     }
-    bool operator==(const LuaString&& o) {
+    bool operator==(const LuaString&& o) const {
         return o.l==l and memcmp(o.s, s, l);
+    }
+};
+
+class LuaStringHasher {
+public:
+    _FORCE_INLINE_ static uint32_t hash(const LuaString& s) {
+        return hash_djb2_buffer((const uint8_t*)s.s,sizeof(char)*s.l);
     }
 };
 

@@ -31,7 +31,7 @@ LuaObject::LuaObject(luau_State *L, int idx) {
     state.remove_stack(idx);
     ls = L;
 }
-LuaObject::LuaObject(LuaObject& o) {
+LuaObject::LuaObject(const LuaObject& o) {
     ls = o.ls;
     luau_context state = ls;
     state.push_ref(o.ref);
@@ -42,7 +42,7 @@ LuaObject::~LuaObject() {
     luau_context origin = ls;
     origin.delete_ref(ref);
 }
-void LuaObject::get(luau_State *to) {
+void LuaObject::get(luau_State *to) const {
     luau_context origin = ls;
     luau_context to_ = to;
     to_.dont_clear_stack();
@@ -191,8 +191,17 @@ void LuaObject::get(luau_State *to) {
     }
     // value is pushed, origin on auto-clear
 }
+bool LuaObject::operator==(const LuaObject& o) const {
+    luau_context origin = ls;
+    origin.push_ref(ref);
+    origin.push_object(o);
+    return origin.rawequal(-2, -1);
+}
+bool LuaObject::operator!=(const LuaObject& o) const {
+    return not (*this == o);
+}
 
-void luau_context::push_object(RBXVariant& v) {
+void luau_context::push_object(const RBXVariant& v) {
     switch (v.type) {
     case RBXVariant::Type::RBXVARIANT_NIL:
         ::lua_pushnil(L);
@@ -219,32 +228,8 @@ void luau_context::push_object(RBXVariant& v) {
         break;
     }
 }
-void luau_context::push_object(RBXVariant& v, int idx) {
-    switch (v.type) {
-    case RBXVariant::Type::RBXVARIANT_NIL:
-        ::lua_pushnil(L);
-        break;
-    case RBXVariant::Type::RBXVARIANT_BOOL:
-        ::lua_pushboolean(L, (bool)v);
-        break;
-    case RBXVariant::Type::RBXVARIANT_INT:
-        ::lua_pushinteger(L, (int)v);
-        break;
-    case RBXVariant::Type::RBXVARIANT_NUM:
-        ::lua_pushnumber(L, (double)v);
-        break;
-    case RBXVariant::Type::RBXVARIANT_OBJ:
-        push_object((LuaObject&)v);
-        break;
-    case RBXVariant::Type::RBXVARIANT_STR:
-        ::lua_pushlstring(L, v.get_str(), v.get_slen());
-        break;
-    case RBXVariant::Type::RBXVARIANT_PTR:
-        ::lua_pushlightuserdata(L, (void*)v);
-        break;
-    default:
-        break;
-    }
+void luau_context::push_object(const RBXVariant& v, int idx) {
+    push_object(v);
     ::lua_insert(L, idx);
 }
 RBXVariant luau_context::as_object() {
@@ -263,9 +248,7 @@ RBXVariant luau_context::as_object() {
             const char *s;
             size_t l;
             s = ::lua_tolstring(L, -1, &l);
-            RBLX_PRINT_VERBOSE("RBXVariant writing with ", s, " and length of", l);
             v = RBXVariant(s, l);
-            RBLX_PRINT_VERBOSE("RBXVariant written with ", v.get_slen());
         }
         break;
     case LUA_TLIGHTUSERDATA:
@@ -296,9 +279,7 @@ RBXVariant luau_context::as_object(int idx) {
             const char *s;
             size_t l;
             s = ::lua_tolstring(L, idx, &l);
-            RBLX_PRINT_VERBOSE("RBXVariant writing with ", s, " and length of", l);
             v = RBXVariant(s, l);
-            RBLX_PRINT_VERBOSE("RBXVariant written with ", v.get_str());
         }
         break;
     case LUA_TLIGHTUSERDATA:
@@ -323,6 +304,32 @@ RBXVariant luau_context::to_object(int idx) {
     remove_stack(idx);
     return v;
 }
+void luau_context::push_object(Instance *p) {
+    if (p == nullptr) {
+        push_object();
+    } else {
+        getregistry("USERDATA_REFS");
+        rawget(-1,(size_t)(void*)p);
+        remove_stack(-2);
+    }
+}
+void luau_context::push_object(Instance *p, int idx) {
+    push_object(p);
+    ::lua_insert(L, idx);
+}
+void luau_context::push_object(RBXScriptSignal *p) {
+    if (p == nullptr) {
+        push_object();
+    } else {
+        getregistry("USERDATA_REFS");
+        rawget(-1,(size_t)(void*)p);
+        remove_stack(-2);
+    }
+}
+void luau_context::push_object(RBXScriptSignal *p, int idx) {
+    push_object(p);
+    ::lua_insert(L, idx);
+}
 
 void RobloxVMInstance::register_types(lua_State *L) { // TODO: add __type
     luau_context ctx = L;
@@ -343,7 +350,7 @@ void RobloxVMInstance::register_types(lua_State *L) { // TODO: add __type
     ctx.push_object("v");
     ctx.rawset(-2,"__mode");
     ctx.setmetatable(-2);
-    ctx.rawset(LUA_REGISTRYINDEX,"INSTANCE_REFS");
+    ctx.rawset(LUA_REGISTRYINDEX,"USERDATA_REFS");
     ctx.newmetatable_type(ctx.UD_TINSTANCE);
     ctx.set_dtor(ctx.UD_TINSTANCE, Instance::delete_instance);
     ctx.push_object(&Instance::lua_static_get,"Instance::__index");
@@ -358,8 +365,6 @@ void RobloxVMInstance::register_types(lua_State *L) { // TODO: add __type
 }
 void RobloxVMInstance::register_genv(lua_State *L) {
     luau_context ctx = L;
-    ctx.push_object();
-    ctx.setglobal("vector"); // deyeet
 
     ctx.new_table();
     ctx.push_object(&Instance::new_instance,"Instance::new");
@@ -368,17 +373,33 @@ void RobloxVMInstance::register_genv(lua_State *L) {
     ctx.setglobal("Instance");
 
     ctx.push_object(&RobloxVMInstance::lua_getmetatable_override,"<protected getmetatable>");
-    RBLX_PRINT_VERBOSE(ctx.as_pointer_hash(-1));
     ctx.setglobal("getmetatable");
     ctx.push_object(&RobloxVMInstance::lua_setmetatable_override,"<protected setmetatable>");
-    RBLX_PRINT_VERBOSE(ctx.as_pointer_hash(-1));
     ctx.setglobal("setmetatable");
+    
+    ctx.push_object(&RobloxVMInstance::lua_typeof,"typeof");
+    ctx.setglobal("typeof");
+}
+void RobloxVMInstance::register_registry(lua_State *L) {
+    luau_context ctx = L;
+    ctx.new_table();
+    ctx.setregistry("INSTANCE_TAGS");
+
+    ctx.new_table();
+    ctx.push_object("k");
+    ctx.rawset(-2,"__mode");
+    ctx.setregistry("WEAKTABLE_K");
+    ctx.new_table();
+    ctx.push_object("V");
+    ctx.rawset(-2,"__mode");
+    ctx.setregistry("WEAKTABLE_V");
 }
 RobloxVMInstance::RobloxVMInstance(lua_State *main) {
     main_synchronized = (luau_State*)memalloc(sizeof(luau_State));
     new(main_synchronized) luau_State(this, main);
     register_types(main);
     register_genv(main);
+    register_registry(main);
 }
 RobloxVMInstance::~RobloxVMInstance() {
     memfree(main_synchronized);
