@@ -21,7 +21,7 @@ lua_env.Append(CFLAGS = ["-std=c99"])
 
 
 
-cpp_paths = [Dir("src").abspath, Dir("/").abspath]
+cpp_paths = [Dir("src").abspath, Dir("/").abspath, Dir("src/classes/roblox").abspath]
 lua_cpp_paths = []
 
 luau_paths = [
@@ -45,7 +45,7 @@ module_env.Append(CPPPATH=cpp_paths)
 
 
 lua_sources = []
-for path in luau_include_paths:
+for path in luau_include_paths: 
     lua_sources.extend(Glob(path + "/*.hpp"))
     lua_sources.extend(Glob(path + "/*.h"))
     lua_sources.extend(Glob(path + "/*.cpp"))

@@ -22,6 +22,7 @@ class luau_State;
 class luau_context;
 class RBXScriptConnection;
 class RBXScriptSignal;
+class TaskScheduler;
 
 class LuaObject final {
     luau_State *ls;
@@ -154,8 +155,8 @@ public:
         "Vector3",
         "Vector3int16"
     };
-
     #pragma endregion
+
     luau_context(lua_State *s) {
         L = s;
         getregistry("LUAU_STATE");
@@ -256,9 +257,7 @@ public:
     
     template <typename T, typename... Args>
     inline T* new_userdata(int utype, Args... args) {
-        int last_stack_size = get_stack_size();
         T* p = new (::lua_newuserdatatagged(L, sizeof(T), utype)) T(args...);
-        ::lua_setuserdatatag(L, -1, utype);
         rawget(LUA_REGISTRYINDEX,"USERDATA_METATABLES");
         rawget(-1,utype);
         setmetatable(-3);
@@ -274,7 +273,6 @@ public:
         static_assert(::std::is_base_of<Instance, T>::value, "To pass a type to new_instance you must pass a class that derives from Instance!");
         T* p = new (::lua_newuserdatatagged(L, sizeof(T), UD_TINSTANCE)) T(vm);
         p->setName((const char*)p->ClassName);
-        ::lua_setuserdatatag(L, -1, UD_TINSTANCE);
         rawget(LUA_REGISTRYINDEX,"USERDATA_METATABLES");
         rawget(-1,UD_TINSTANCE);
         setmetatable(-3);
@@ -370,6 +368,7 @@ public:
     inline void remove_stack(int idx) { lua_remove(L, idx); }
     inline int get_stack_size() { return lua_gettop(L); }
     inline void push_value(int idx) { lua_pushvalue(L, idx); }
+    inline void push_value(int idx, int idxdest) { lua_pushvalue(L, idx); lua_insert(L, idxdest); }
     inline void clear_stack() { 
         if (last_stack_size < 0) return; 
         int64_t s = lua_gettop(L) - last_stack_size;
@@ -591,6 +590,14 @@ public:
     inline void copy_arg(lua_State *to, int idx) {::lua_xpush(L, to, idx); }
 
     inline bool rawequal(int idx1, int idx2) { return ::lua_rawequal(L, idx1, idx2); }
+
+    inline RobloxVMInstance* get_vm() {
+        getregistry("ROBLOX_VM");
+        RobloxVMInstance* vm = (RobloxVMInstance*)::lua_tolightuserdata(L, -1);
+        lua_pop(L, 1);
+        return vm;
+    }
+    TaskScheduler* get_task_scheduler();
 };
 
 class luau_function_context : public luau_context {
@@ -791,6 +798,26 @@ public:
     };
 };
 
+class TaskScheduler {
+    RobloxVMInstance* vm;
+    friend class RobloxVMInstance;
+    TaskScheduler(RobloxVMInstance *vm);
+public:
+    ~TaskScheduler();
+    static int lua_task_spawn(lua_State *L);
+    static int lua_task_defer(lua_State *L);
+    static int lua_task_delay(lua_State *L);
+    static int lua_task_desynchronize(lua_State *L);
+    static int lua_task_synchronize(lua_State *L);
+    static int lua_task_wait(lua_State *L);
+    static int lua_task_cancel(lua_State *L);
+};
+enum RBLX_RunContext {
+    RUNCTXT_CORE,
+    RUNCTXT_PLUGIN,
+    RUNCTXT_LOCAL,
+    RUNCTXT_NORMAL
+};
 class RobloxVMInstance final {
     ::std::recursive_mutex mtx;
 
@@ -892,7 +919,8 @@ public:
 
 
     //misc
-
+    TaskScheduler* task;
+    RBLX_RunContext context = RUNCTXT_NORMAL;
 };
 
 }

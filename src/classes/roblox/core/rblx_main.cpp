@@ -330,6 +330,9 @@ void luau_context::push_object(RBXScriptSignal *p, int idx) {
     push_object(p);
     ::lua_insert(L, idx);
 }
+TaskScheduler* luau_context::get_task_scheduler() {
+    return get_vm()->task;
+}
 
 void RobloxVMInstance::register_types(lua_State *L) { // TODO: add __type
     luau_context ctx = L;
@@ -395,14 +398,134 @@ void RobloxVMInstance::register_registry(lua_State *L) {
     ctx.setregistry("WEAKTABLE_V");
 }
 RobloxVMInstance::RobloxVMInstance(lua_State *main) {
-    main_synchronized = (luau_State*)memalloc(sizeof(luau_State));
+    main_synchronized = new(memalloc(sizeof(luau_State))) luau_State(this, main);;
+    task = new(memalloc(sizeof(TaskScheduler))) TaskScheduler(this);
     new(main_synchronized) luau_State(this, main);
     register_types(main);
     register_genv(main);
     register_registry(main);
 }
 RobloxVMInstance::~RobloxVMInstance() {
+    task->~TaskScheduler();
+    memfree(task);
     memfree(main_synchronized);
+}
+
+TaskScheduler::TaskScheduler(RobloxVMInstance *VM) {
+    this->vm = VM;
+    luau_context ctx = VM->main_synchronized;
+    ctx.new_table();
+    ctx.push_object(TaskScheduler::lua_task_spawn,"task::spawn");
+    ctx.rawset(-2,"spawn");
+    ctx.push_object(TaskScheduler::lua_task_defer,"task::defer");
+    ctx.rawset(-2,"defer");
+    ctx.push_object(TaskScheduler::lua_task_delay,"task::delay");
+    ctx.rawset(-2,"delay");
+    ctx.push_object(TaskScheduler::lua_task_synchronize,"task::synchronize");
+    ctx.rawset(-2,"synchronize");
+    ctx.push_object(TaskScheduler::lua_task_desynchronize,"task::desynchronize");
+    ctx.rawset(-2,"desynchronize");
+    ctx.push_object(TaskScheduler::lua_task_wait,"task::wait");
+    ctx.rawset(-2,"wait");
+    ctx.push_object(TaskScheduler::lua_task_cancel,"task::cancel");
+    ctx.rawset(-2,"cancel");
+    ctx.freeze(-1);
+    ctx.setglobal("task");
+
+    ctx.new_table();
+    ctx.setregistry("TASK_legacy_spawn");
+    ctx.new_table();
+    ctx.setregistry("TASK_legacy_delay");
+    ctx.new_table();
+    ctx.setregistry("TASK_legacy_wait");
+    ctx.new_table();
+    ctx.setregistry("TASK_await_defer");
+    ctx.new_table();
+    ctx.setregistry("TASK_await_delay");
+    ctx.new_table();
+    ctx.setregistry("TASK_await_wait");
+}
+TaskScheduler::~TaskScheduler() {}
+int TaskScheduler::lua_task_spawn(lua_State *L) {
+    luau_function_context fn = L;
+    fn.assert_type_argument(1,"functionOrThread", LUA_TFUNCTION, LUA_TTHREAD);
+    fn.assert_stack_size_vararg(1);
+    bool isthread = false;
+    if (fn.is_type(1, LUA_TFUNCTION)) {
+        fn.new_thread(fn.get_stack_size() - 1);
+    } else {
+        isthread = true;
+        fn.push_value(1);
+        int status = fn.costatus();
+        if (status != LUA_COSUS) {
+            fn.error("cannot spawn a non-suspended thread (invalid argument #1)");
+        }
+    }
+    fn.push_value(1,1);
+    fn.resume((isthread) ? fn.get_stack_size()-2 : 0, 0, 0); // TODO: Implement error handle function
+    return 1;
+}
+int TaskScheduler::lua_task_defer(lua_State *L) {
+    luau_function_context fn = L;
+    fn.assert_type_argument(1,"functionOrThread", LUA_TFUNCTION, LUA_TTHREAD);
+    fn.assert_stack_size_vararg(1);
+    int nargs = fn.get_stack_size();
+    bool isthread = false;
+    if (fn.is_type(1, LUA_TFUNCTION)) {
+        fn.push_value(1);
+        fn.new_thread(0);
+        fn.remove_stack(1);
+        fn.insert_into(1); // replace function with thread
+        fn.push_value(1,1);
+    } else {
+        isthread = true;
+        fn.push_value(1);
+        int status = fn.costatus();
+        if (status != LUA_COSUS) {
+            fn.error("cannot spawn a non-suspended thread (invalid argument #1)");
+        }
+    }
+    fn.create_array_from_stack(nargs);
+    fn.getregistry("TASK_await_defer");
+    fn.push_value(2);
+    fn.rawset(-2,fn.len(-2)+1);
+    return 1;
+}
+int TaskScheduler::lua_task_delay(lua_State *L) {
+    luau_function_context fn = L;
+    fn.assert_type_argument(1,"functionOrThread", LUA_TFUNCTION, LUA_TTHREAD);
+    fn.assert_type_argument(2,"delay", LUA_TNUMBER);
+    fn.assert_stack_size_vararg(2);
+    int nargs = fn.get_stack_size();
+    bool isthread = false;
+    if (fn.is_type(1, LUA_TFUNCTION)) {
+        fn.push_value(1);
+        fn.new_thread(0);
+        fn.remove_stack(1);
+        fn.insert_into(1); // replace function with thread
+        fn.push_value(1,1);
+    } else {
+        isthread = true;
+        fn.push_value(1);
+        int status = fn.costatus();
+        if (status != LUA_COSUS) {
+            fn.error("cannot spawn a non-suspended thread (invalid argument #1)");
+        }
+    }
+    fn.create_array_from_stack(nargs);
+    fn.getregistry("TASK_await_delay");
+    fn.push_value(2);
+    fn.rawset(-2,fn.len(-2)+1);
+    return 1;
+}
+int TaskScheduler::lua_task_synchronize(lua_State *L) {
+    return 0; // TODO: Implement desync/sync mode.
+}
+int TaskScheduler::lua_task_desynchronize(lua_State *L) {
+    return 0; // TODO: Implement desync/sync mode.
+}
+int TaskScheduler::lua_task_cancel(lua_State *L) {
+    return 0; // TODO: Implement task::cancel
 }
 
 }

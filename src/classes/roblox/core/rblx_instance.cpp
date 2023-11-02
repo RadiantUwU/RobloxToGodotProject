@@ -56,7 +56,7 @@ void Instance::destroy_children() {
         i->destroy();
     }
 }
-Instance* Instance::getParent() {
+Instance* Instance::getParent() const {
     return parent;
 }
 void Instance::setParent(Instance *newparent) {
@@ -76,7 +76,7 @@ void Instance::setParent(Instance *newparent) {
     }
     if (parent) {
         RBLX_PRINT_VERBOSE("Starting recursion through parent's references table");
-        for (int ref : parent->refs) {
+        for (int64_t ref : parent->refs) {
             luau_context ctx = VM->main_synchronized;
             ctx.push_ref(ref);
             if (ctx.as_userdata<Instance>(-1) == this) {
@@ -128,7 +128,7 @@ void Instance::setParent(Instance *newparent) {
     }
 
 }
-LuaString Instance::getName() {
+LuaString Instance::getName() const {
     return Name;
 }
 void Instance::setName(LuaString n) {
@@ -138,15 +138,84 @@ void Instance::setName(LuaString n) {
         this->property_signals.get("Name")->Fire(n);
     }
 }
+int64_t Instance::add_ref(Instance *i) {
+    luau_context ctx = this->VM->main_synchronized;
+    ctx.push_object(i);
+    int64_t ref = ctx.new_ref(-1);
+    refs.append(ref);
+    return ref;
+}
+int64_t Instance::add_ref(RBXScriptSignal *s) {
+    luau_context ctx = this->VM->main_synchronized;
+    ctx.push_object(s);
+    int64_t ref = ctx.new_ref(-1);
+    refs.append(ref);
+    return ref;
+}
+bool Instance::has_ref(Instance* i) {
+    for (int64_t ref : refs) {
+        luau_context ctx = VM->main_synchronized;
+        ctx.push_ref(ref);
+        if (ctx.as_userdata<Instance>(-1) == i) {
+            return true;
+        }
+    }
+    return false;
+}
+bool Instance::has_ref(RBXScriptSignal* s) {
+    for (int64_t ref : refs) {
+        luau_context ctx = VM->main_synchronized;
+        ctx.push_ref(ref);
+        if (ctx.as_userdata<RBXScriptSignal>(-1) == s) {
+            return true;
+        }
+    }
+    return false;
+}
+void Instance::remove_ref(Instance* i) {
+    for (int64_t ref : refs) {
+        luau_context ctx = VM->main_synchronized;
+        ctx.push_ref(ref);
+        if (ctx.as_userdata<Instance>(-1) == i) {
+            ctx.delete_ref(ref);
+            refs.erase(ref);
+            break;
+        }
+    }
+}
+void Instance::remove_ref(RBXScriptSignal* s) {
+    for (int64_t ref : refs) {
+        luau_context ctx = VM->main_synchronized;
+        ctx.push_ref(ref);
+        if (ctx.as_userdata<RBXScriptSignal>(-1) == s) {
+            ctx.delete_ref(ref);
+            refs.erase(ref);
+            break;
+        }
+    }
+}
+bool Instance::is_a(const LuaString& s) const {
+    return s == "Instance";
+}
+bool Instance::is_a(const InstanceType t) const {
+    return t == T_INSTANCE;
+}
+bool Instance::has_property(const LuaString& s, bool recurse) const {
+    if (s == "Archivable") return true;
+    else if (s == "ClassName") return true;
+    else if (s == "Name") return true;
+    else if (s == "Parent") return true;
+    return false;
+}
 
-Instance *Instance::clone_object() {
+Instance *Instance::clone_object() const {
     luau_context ctx = VM->main_synchronized;
     //TODO: Add defer reference
     Instance* i = ctx.new_instance<Instance>(VM);
     _clone_object(i);
     return i;
 }
-void Instance::_clone_object(Instance* i) {
+void Instance::_clone_object(Instance* i) const {
     i->Archivable = Archivable;
     i->Name = Name;
 }
@@ -500,16 +569,18 @@ int Instance::GetPropertyChangedSignal(lua_State *L) {
     fn.assert_type_argument(2, "property", LUA_TSTRING);
     Instance* i = fn.as_userdata<Instance>(1);
     RBXVariant v = fn.as_object(2);
-    LuaString attr = LuaString(v.get_str(),v.get_slen());
-    if (i->property_signals.has(attr)) {
-        fn.push_object(i->property_signals.get(attr));
+    LuaString property = LuaString(v.get_str(),v.get_slen());
+    if (i->property_signals.has(property)) {
+        fn.push_object(i->property_signals.get(property));
         return 1;
-    } else {
+    } else if (i->has_property(property)) {
         RBXScriptSignal *sig = fn.new_userdata<RBXScriptSignal>(fn.UD_TRBXSCRIPTSIGNAL,L);
         fn.push_value(-1);
         i->refs.append(fn.new_ref(-1));
-        i->property_signals.insert(attr,sig);
+        i->property_signals.insert(property,sig);
         return 1;
+    } else {
+        fn.errorf("property %s does not exist in type %s",property.s,i->ClassName);
     }
 }
 int Instance::GetTags(lua_State *L) {
