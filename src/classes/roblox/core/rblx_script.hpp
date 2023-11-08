@@ -5,7 +5,6 @@
 #ifndef RBLX_BASE_SCRIPT
 #define RBLX_BASE_SCRIPT
 namespace godot {
-
 class LuaSourceContainer : public Instance {
 protected:
     Instance* CurrentEditor = nullptr;
@@ -18,15 +17,22 @@ public:
     int lua_set(lua_State *L) override;
 };
 
+enum RBLX_RunContext {
+    Legacy,
+    Server,
+    Plugin,
+    Client
+};
+
 class BaseScript : public LuaSourceContainer {
 protected:
     bool Enabled = false;
     int64_t env_ref;
     Instance* actor = nullptr;
     bool has_property(const LuaString& s, bool recurse = true) const override;
-    void _clone_object(Instance*)
+    void _clone_object(Instance*);
 public:
-    LuaString LinkedSource;
+    LuaString LinkedSource = "[Embedded]";
     RBLX_RunContext RunContext;
     void reload() override;
 

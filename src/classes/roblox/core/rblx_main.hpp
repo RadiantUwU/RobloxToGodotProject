@@ -812,7 +812,7 @@ public:
     static int lua_task_wait(lua_State *L);
     static int lua_task_cancel(lua_State *L);
 };
-enum RBLX_RunContext {
+enum RBLX_VMRunContext {
     RUNCTXT_CORE,
     RUNCTXT_LOCAL,
     RUNCTXT_PLUGIN,
@@ -920,7 +920,7 @@ public:
 
     //misc
     TaskScheduler* task;
-    RBLX_RunContext context = RUNCTXT_NORMAL;
+    RBLX_VMRunContext context = RUNCTXT_NORMAL;
 };
 
 }
