@@ -134,8 +134,6 @@ protected:
     bool parent_locked = false;
     void _clone_object(Instance*) const;
     virtual Instance* clone_object() const; // TODO: mark this as abstract
-    virtual bool is_a(const LuaString& s) const;
-    virtual bool is_a(const InstanceType t) const;
     virtual bool has_property(const LuaString& s, bool recurse = true) const;
     int64_t add_ref(Instance* i);
     int64_t add_ref(RBXScriptSignal* s);
@@ -156,6 +154,9 @@ public:
     void setParent(Instance* newparent);
     const char* volatile const ClassName = "Instance";
     volatile const InstanceType Type = T_INSTANCE; // Internal
+    
+    virtual bool is_a(const LuaString& s) const;
+    virtual bool is_a(const InstanceType t) const;
 
     virtual int lua_get(lua_State *L);
     virtual int lua_set(lua_State *L);

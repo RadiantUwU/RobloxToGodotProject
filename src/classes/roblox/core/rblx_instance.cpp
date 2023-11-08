@@ -885,8 +885,6 @@ int Instance::lua_static_set(lua_State *L) {
     fn.getmetatable(-1);
     auto mt = fn.as_pointer_hash(-1);
     fn.pop_stack(1);
-    RBLX_PRINT_VERBOSE(mt);
-    RBLX_PRINT_VERBOSE("IS USERDATA self: ",fn.get_type(1)==LUA_TUSERDATA," IS INSTANCE: ",fn.get_userdata_type(1)==fn.UD_TINSTANCE);
     fn.assert_usertype_argument(1, "self", fn.UD_TINSTANCE);
     fn.assert_type_argument(2, "key", LUA_TSTRING);
     Instance *i = fn.as_userdata<Instance>(1);

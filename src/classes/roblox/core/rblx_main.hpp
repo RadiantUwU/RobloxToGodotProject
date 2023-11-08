@@ -814,8 +814,8 @@ public:
 };
 enum RBLX_RunContext {
     RUNCTXT_CORE,
-    RUNCTXT_PLUGIN,
     RUNCTXT_LOCAL,
+    RUNCTXT_PLUGIN,
     RUNCTXT_NORMAL
 };
 class RobloxVMInstance final {
