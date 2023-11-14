@@ -51,9 +51,9 @@ private:
             virtual ~_InstanceWriteProxy() {};
 
             bool Archivable = true;
-            LuaString getName() const {};
+            LuaString getName() const { return nullptr; };
             void setName(LuaString newname) {};
-            void* getParent() const {};
+            void* getParent() const { return nullptr; };
             void setParent(void* newparent) {};
         public:
             const char* ClassName;
@@ -137,10 +137,13 @@ protected:
     virtual bool has_property(const LuaString& s, bool recurse = true) const;
     int64_t add_ref(Instance* i);
     int64_t add_ref(RBXScriptSignal* s);
+    void add_ref(int64_t ref);
     bool has_ref(Instance* i);
     bool has_ref(RBXScriptSignal* s);
+    bool has_ref(int64_t ref);
     void remove_ref(Instance* i);
     void remove_ref(RBXScriptSignal* i);
+    void remove_ref(int64_t ref);
 public:
     int64_t network_id = (size_t)(void*)this;
     Instance(RobloxVMInstance *VM);

@@ -1,11 +1,31 @@
 #include <lua.h>
 #include <lualib.h>
+#include <luacode.h>
 #include "rblx_main.hpp"
 #include "rblx_instance.hpp"
 #include "rblx_events.hpp"
 #include "rblx_debug.hpp"
 
 namespace godot {
+
+static lua_CompileOptions rblx_vm_compile_options = {
+    // int optimizationLevel;
+    1,
+
+    // int debugLevel;
+    1,
+
+    // int coverageLevel;
+    0,
+
+    // const char* vectorLib;
+    nullptr,
+
+    // const char* vectorCtor;
+    nullptr,
+
+    // const char** mutableGlobals;
+};
 
 luau_State::luau_State(RobloxVMInstance *VM) {
     vm = VM;
@@ -332,6 +352,16 @@ void luau_context::push_object(RBXScriptSignal *p, int idx) {
 }
 TaskScheduler* luau_context::get_task_scheduler() {
     return get_vm()->task;
+}
+int luau_context::compile(const char* fname, LuaString code, int env_idx) {
+    size_t bytecode_size;
+    char* bytecode = luau_compile(code.s, code.l, &rblx_vm_compile_options, &bytecode_size);
+    if (bytecode == nullptr) {
+        return -1;
+    }
+    int status = luau_load(L, fname, bytecode, bytecode_size, env_idx);
+    std::free(bytecode);
+    return status;
 }
 
 void RobloxVMInstance::register_types(lua_State *L) { // TODO: add __type

@@ -152,6 +152,9 @@ int64_t Instance::add_ref(RBXScriptSignal *s) {
     refs.append(ref);
     return ref;
 }
+void Instance::add_ref(int64_t ref) {
+    refs.append(ref);
+}
 bool Instance::has_ref(Instance* i) {
     for (int64_t ref : refs) {
         luau_context ctx = VM->main_synchronized;
@@ -171,6 +174,9 @@ bool Instance::has_ref(RBXScriptSignal* s) {
         }
     }
     return false;
+}
+bool Instance::has_ref(int64_t ref) {
+    return refs.find(ref) != -1;
 }
 void Instance::remove_ref(Instance* i) {
     for (int64_t ref : refs) {
@@ -193,6 +199,9 @@ void Instance::remove_ref(RBXScriptSignal* s) {
             break;
         }
     }
+}
+void Instance::remove_ref(int64_t ref) {
+    refs.erase(ref);
 }
 bool Instance::is_a(const LuaString& s) const {
     return s == "Instance";

@@ -17,6 +17,7 @@ namespace godot {
 
 struct RBXVariant;
 class Instance;
+class BaseScript;
 class RobloxVMInstance;
 class luau_State;
 class luau_context;
@@ -222,7 +223,7 @@ public:
     inline void push_object(const char* str, int idx) { ::lua_pushstring(L, str); ::lua_insert(L, idx); }
     inline void push_object(const char* str, size_t len, int idx) { ::lua_pushlstring(L, str, len); ::lua_insert(L, idx); }
     inline void push_object(const LuaObject& obj, int idx) { obj.get(ls); ::lua_insert(L, idx); }
-    inline void push_object(lua_CFunction f, int idx, const char* fname = "<C++ context>") { lua_pushcfunction(L, f, fname); ::lua_insert(L, idx); }
+    inline void push_object(lua_CFunction f, const char* fname, int idx) { lua_pushcfunction(L, f, fname); ::lua_insert(L, idx); }
     inline void push_object(void* p, int idx) { ::lua_pushlightuserdata(L, p); ::lua_insert(L, idx); }
     inline void push_object(const LuaString& s, int idx) { ::lua_pushlstring(L, s.s, s.l); ::lua_insert(L, idx); }
     void push_object(const RBXVariant& v, int idx);
@@ -413,12 +414,27 @@ public:
         ::lua_newtable(L);
         int iter = 0;
         while (true) {
-            iter = rawiter(-1, iter);
+            iter = rawiter(-2, iter);
             if (iter == -1) {
                 ::lua_remove(L, -2);
                 return;
             }
             ::lua_rawset(L, -3);
+        }
+    }
+    inline void clear_table(int tbl_idx = -1) {
+        tbl_idx = as_absolute_stack_index(tbl_idx);
+        clone_table(tbl_idx);
+        int iter = 0;
+        while (true) {
+            iter = rawiter(-1, iter);
+            if (iter == -1) {
+                ::lua_pop(L, 1);
+                return;
+            }
+            ::lua_pop(L, 1);
+            ::lua_pushnil(L);
+            ::lua_rawset(L, tbl_idx);
         }
     }
 
@@ -496,6 +512,23 @@ public:
         lua_getref(L, ref);
         lua_unref(L, ref);
         return thr; // if they wanna use it anyways, its on stack
+    }
+    // [...], [Function], [nargs] -> [...], [thread]
+    inline lua_State* new_thread(int nargs, BaseScript* attached_script) { 
+        lua_State* thr = lua_newthread(L);
+        int ref = lua_ref(L, -1); // create temporary reference and delete the thread so it doesnt get GC'd
+        lua_pop(L, 1);
+        lua_xmove(L, thr, 1+nargs);
+        lua_getref(L, ref);
+        lua_unref(L, ref);
+        lua_setthreaddata(thr, attached_script);
+        return thr; // if they wanna use it anyways, its on stack
+    }
+    inline BaseScript* get_attached_script() {
+        return (BaseScript*)lua_getthreaddata(L);
+    }
+    inline BaseScript* get_attached_script(lua_State *thr) {
+        return (BaseScript*)lua_getthreaddata(thr);
     }
     // [...], [thread] -> [...]
     inline int status() {
@@ -598,6 +631,9 @@ public:
         return vm;
     }
     TaskScheduler* get_task_scheduler();
+
+    // Returns a LUA_STATUS
+    int compile(const char* fname, LuaString code, int env_idx = 0);
 };
 
 class luau_function_context : public luau_context {
@@ -791,6 +827,8 @@ public:
             return ptr == other.ptr;
         case Type::RBXVARIANT_OBJ:
             return obj == other.obj;
+        default:
+            return false;
         }
     }
     bool operator!=(const RBXVariant& other) const {

@@ -30,7 +30,8 @@ protected:
     int64_t env_ref;
     Instance* actor = nullptr;
     bool has_property(const LuaString& s, bool recurse = true) const override;
-    void _clone_object(Instance*);
+    void _clone_object(Instance*) const;
+    virtual void before_start() = 0;
 public:
     LuaString LinkedSource = "[Embedded]";
     RBLX_RunContext RunContext;
@@ -46,6 +47,9 @@ public:
 class Script : public BaseScript {
 protected:
     bool has_property(const LuaString& s, bool recurse = true) const override;
+    void _clone_object(Instance*) const;
+    Instance* clone_object() const override;
+    void before_start() override;
 public:
     Script(RobloxVMInstance* VM);
     ~Script();
@@ -60,11 +64,13 @@ public:
 };
 
 class LocalScript : public Script {
+protected:
+    Instance* clone_object() const override;
+public:
     LocalScript(RobloxVMInstance* VM);
-    ~LocalScript();
     bool is_a(const LuaString& s) const override;
     bool is_a(const InstanceType t) const override;
-}
+};
 
 }
 #endif
