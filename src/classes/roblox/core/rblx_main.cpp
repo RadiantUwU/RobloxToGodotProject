@@ -434,6 +434,9 @@ RobloxVMInstance::RobloxVMInstance(lua_State *main) {
     register_types(main);
     register_genv(main);
     register_registry(main);
+#ifdef RBLX_DEBUG
+    context = RUNCTXT_CORE; // Allow core access when in debug mode to everything.
+#endif
 }
 RobloxVMInstance::~RobloxVMInstance() {
     task->~TaskScheduler();
@@ -555,7 +558,32 @@ int TaskScheduler::lua_task_desynchronize(lua_State *L) {
     return 0; // TODO: Implement desync/sync mode.
 }
 int TaskScheduler::lua_task_cancel(lua_State *L) {
-    return 0; // TODO: Implement task::cancel
+    luau_function_context fn = L;
+    fn.assert_stack_size(1);
+    fn.assert_type_argument(1, "thread", LUA_TTHREAD);
+    fn.push_value(1);
+    int status = fn.costatus();
+    if (status == LUA_COSUS) {
+        lua_resetthread(fn.as_thread(1));
+    }
+    return 0;
+}
+int TaskScheduler::lua_task_wait(lua_State *L) {
+    luau_function_context fn = L;
+    fn.assert_stack_size(0,1);
+    double delay = 0;
+    if (fn.get_stack_size() == 1) {
+        fn.assert_type_argument(1,"delay", LUA_TNUMBER);
+        delay = (double)fn.to_object(1);
+    }
+    fn.push_current_thread();
+    fn.push_object(delay+fn.clock());
+    fn.create_array_from_stack(2);
+    fn.getregistry("TASK_await_wait");
+    fn.push_value(1);
+    fn.rawset(-2,fn.len(-2)+1);
+    fn.yield(0);
+    return 0;
 }
 
 }
