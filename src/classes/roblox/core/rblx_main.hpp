@@ -959,6 +959,10 @@ public:
     //misc
     TaskScheduler* task;
     RBLX_VMRunContext context = RUNCTXT_NORMAL;
+
+    LuaString open_script_asset(LuaString asset) {
+        return nullptr; // TODO: implement this
+    };
 };
 
 }

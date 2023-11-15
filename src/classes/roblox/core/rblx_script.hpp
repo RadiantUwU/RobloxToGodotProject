@@ -28,10 +28,13 @@ class BaseScript : public LuaSourceContainer {
 protected:
     bool Enabled = false;
     int64_t env_ref;
+    int64_t threads_ref;
+    int64_t connections_ref;
+    //TODO: potential SIGSEGV when the script variable is removed from the environment and the script is removed from the instance tree without destroying, resulting in no references and a deletion.
     Instance* actor = nullptr;
     bool has_property(const LuaString& s, bool recurse = true) const override;
     void _clone_object(Instance*) const;
-    virtual void before_start() = 0;
+    virtual void before_start();
 public:
     LuaString LinkedSource = "[Embedded]";
     RBLX_RunContext RunContext;
@@ -41,7 +44,7 @@ public:
     int lua_set(lua_State *L) override;
 
     bool isEnabled() const;
-    void setEnable(bool enable);
+    void setEnable(bool enable, bool now = false);
 };
 
 class Script : public BaseScript {
@@ -51,7 +54,6 @@ protected:
     Instance* clone_object() const override;
     void before_start() override;
 public:
-    Script(RobloxVMInstance* VM);
     ~Script();
     LuaString Source;
 
