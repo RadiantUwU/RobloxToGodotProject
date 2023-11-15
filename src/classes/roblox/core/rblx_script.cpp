@@ -131,33 +131,52 @@ void BaseScript::setEnable(bool enable, bool now) {
             L = this->VM->main_synchronized;
         }// TODO: Implement if actor exists
         luau_context ctx = L;
+
         ctx.new_dictionary(1);
         ctx.push_object(this);
         ctx.rawset(-2,"script");
         ctx.push_value(-1);
         env_ref = ctx.new_ref(-1);
         add_ref(env_ref);
+
         ctx.new_table();
+        ctx.push_object("k");
+        ctx.rawset(-2,"__mode");
+
+        ctx.new_table();
+        ctx.push_value(-2);
+        ctx.setmetatable(-2);
         threads_ref = ctx.new_ref(-1);
         add_ref(threads_ref);
+
+        ctx.new_table();
+        ctx.push_value(-2);
+        ctx.setmetatable(-2);
+        connections_ref = ctx.new_ref(-1);
+        add_ref(connections_ref);
+
         before_start();
         ctx.compile(Name,RuntimeSource,-1);
         ctx.new_thread(0, this);
+
         if (now) ctx.push_object(ctx.get_task_scheduler()->lua_task_spawn,"task::spawn",-2);
         else ctx.push_object(ctx.get_task_scheduler()->lua_task_defer,"task::defer",-2);
+
         ctx.call(1, 0);
     } else {
         luau_State *L;
+        int64_t iter = 0;
         if (actor == nullptr) {
             L = this->VM->main_synchronized;
         }// TODO: Implement if actor exists
         luau_context ctx = L;
+
         ctx.push_ref(env_ref);
         ctx.clear_table();
         ctx.delete_ref(env_ref);
         remove_ref(env_ref);
+
         ctx.push_ref(threads_ref);
-        int64_t iter = 0;
         while (true) {
             luau_context for_loop_closure = L;
             iter = ctx.rawiter(-1,iter);
@@ -168,6 +187,19 @@ void BaseScript::setEnable(bool enable, bool now) {
         ctx.clear_table();
         ctx.delete_ref(threads_ref);
         remove_ref(threads_ref);
+
+        iter = 0;
+        ctx.push_ref(connections_ref);
+        while (true) {
+            luau_context for_loop_closure = L;
+            iter = ctx.rawiter(-1,iter);
+            if (iter == -1) return;
+            RBXScriptConnection* connection = ctx.as_userdata<RBXScriptConnection>(-1);
+            connection->Disconnect();
+        }
+        ctx.clear_table();
+        ctx.delete_ref(connections_ref);
+        remove_ref(connections_ref);
     }
 }
 void BaseScript::reload() {
@@ -182,7 +214,7 @@ void BaseScript::before_start() {
     }
 }
 void BaseScript::_clone_object(Instance* i) const {
-    BaseScript *b = (BaseScript*)i;
+    BaseScript *b = dynamic_cast<BaseScript*>(i);
     b->LinkedSource = LinkedSource;
     b->RuntimeSource = RuntimeSource;
     b->RunContext = RunContext;
@@ -191,7 +223,7 @@ void BaseScript::_clone_object(Instance* i) const {
         L = VM->main_synchronized;
     }
     luau_context ctx = L;
-    ctx.push_objects(VM->task->lua_task_delay, b->lua_set, .15, b, "Enabled", Enabled);
+    ctx.push_objects(VM->task->lua_task_delay, Instance::lua_static_set, .15, b, "Enabled", Enabled);
     ctx.call(5, 0);
 }
 
@@ -245,7 +277,58 @@ void Script::before_start() {
     }
 }
 void Script::_clone_object(Instance* i) const {
+    Script* s = dynamic_cast<Script*>(i);
+    s->Source = Source;
+}
+Instance* Script::clone_object() const {
+    luau_context ctx = VM->main_synchronized;
+    Script* s = ctx.new_instance<Script>(VM);
+    Instance::_clone_object(s);
+    BaseScript::_clone_object(s);
+    Script::_clone_object(s);
+    return dynamic_cast<Instance*>(s);
+}
+bool Script::is_a(const LuaString& s) const {
+    if (s == "Script") return true;
+    if (s == "BaseScript") return true;
+    if (s == "LuaSourceContainer") return true;
+    return Instance::is_a(s);
+}
+bool Script::is_a(const InstanceType t) const {
+    switch (t) {
+    case T_SCRIPT:
+    case T_BASESCRIPT:
+    case T_LUASOURCECONTAINER:
+    case T_INSTANCE:
+        return true;
+    default:
+        return false;
+    }
 }
 
+Instance* LocalScript::clone_object() const {
+    luau_context ctx = VM->main_synchronized;
+    LocalScript* s = ctx.new_instance<LocalScript>(VM);
+    Instance::_clone_object(s);
+    BaseScript::_clone_object(s);
+    Script::_clone_object(s);
+    return dynamic_cast<Instance*>(s);
+}
+bool LocalScript::is_a(const LuaString& s) const {
+    if (s == "LocalScript") return true;
+    return Script::is_a(s);
+}
+bool LocalScript::is_a(const InstanceType t) const {
+    switch (t) {
+    case T_LOCALSCRIPT:
+    case T_SCRIPT:
+    case T_BASESCRIPT:
+    case T_LUASOURCECONTAINER:
+    case T_INSTANCE:
+        return true;
+    default:
+        return false;
+    }
+}
 
 };

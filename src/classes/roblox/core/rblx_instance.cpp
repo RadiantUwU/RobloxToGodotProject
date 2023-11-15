@@ -220,6 +220,7 @@ bool Instance::has_property(const LuaString& s, bool recurse) const {
 Instance *Instance::clone_object() const {
     luau_context ctx = VM->main_synchronized;
     //TODO: Add defer reference
+    //TODO: Associate to actor
     Instance* i = ctx.new_instance<Instance>(VM);
     _clone_object(i);
     return i;

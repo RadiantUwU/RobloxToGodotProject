@@ -22,6 +22,7 @@ enum InstanceType {
     T_DATAMODEL,
     T_SCRIPT,
     T_BASEPART,
+    T_LOCALSCRIPT
     //...
 };
 struct InstanceClassWriteProxy final {

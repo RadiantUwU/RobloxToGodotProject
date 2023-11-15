@@ -10,6 +10,7 @@ protected:
     Instance* CurrentEditor = nullptr;
     bool has_property(const LuaString& s, bool recurse = true) const override;
 public:
+    LuaSourceContainer(RobloxVMInstance *vm) : Instance(vm) {}
     LuaString RuntimeSource;
     virtual void reload() = 0;
 
@@ -36,6 +37,7 @@ protected:
     void _clone_object(Instance*) const;
     virtual void before_start();
 public:
+    BaseScript(RobloxVMInstance *vm) : LuaSourceContainer(vm) {}
     LuaString LinkedSource = "[Embedded]";
     RBLX_RunContext RunContext;
     void reload() override;
@@ -54,6 +56,7 @@ protected:
     Instance* clone_object() const override;
     void before_start() override;
 public:
+    Script(RobloxVMInstance* vm) : BaseScript(vm) {}
     ~Script();
     LuaString Source;
 
@@ -69,7 +72,7 @@ class LocalScript : public Script {
 protected:
     Instance* clone_object() const override;
 public:
-    LocalScript(RobloxVMInstance* VM);
+    LocalScript(RobloxVMInstance* vm) : Script(vm) {}
     bool is_a(const LuaString& s) const override;
     bool is_a(const InstanceType t) const override;
 };

@@ -1,5 +1,6 @@
 #include "rblx_events.hpp"
 #include "rblx_main.hpp"
+#include "rblx_script.hpp"
 #include <lua.h>
 #include <cstddef>
 #include <cstring>
