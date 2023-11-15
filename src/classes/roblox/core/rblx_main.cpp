@@ -412,6 +412,24 @@ void RobloxVMInstance::register_genv(lua_State *L) {
     
     ctx.push_object(&RobloxVMInstance::lua_typeof,"typeof");
     ctx.setglobal("typeof");
+
+    ctx.new_table();
+    ctx.push_object(&TaskScheduler::lua_task_spawn, "task::spawn");
+    ctx.rawset(-2, "spawn");
+    ctx.push_object(&TaskScheduler::lua_task_defer, "task::defer");
+    ctx.rawset(-2, "defer");
+    ctx.push_object(&TaskScheduler::lua_task_delay, "task::delay");
+    ctx.rawset(-2, "delay");
+    ctx.push_object(&TaskScheduler::lua_task_synchronize, "task::synchronize");
+    ctx.rawset(-2, "synchronize");
+    ctx.push_object(&TaskScheduler::lua_task_desynchronize, "task::desynchronize");
+    ctx.rawset(-2, "desynchronize");
+    ctx.push_object(&TaskScheduler::lua_task_wait, "task::wait");
+    ctx.rawset(-2, "wait");
+    ctx.push_object(&TaskScheduler::lua_task_cancel, "task::cancel");
+    ctx.rawset(-2, "cancel");
+    ctx.freeze(-1);
+    ctx.setglobal("task");
 }
 void RobloxVMInstance::register_registry(lua_State *L) {
     luau_context ctx = L;
@@ -447,23 +465,6 @@ RobloxVMInstance::~RobloxVMInstance() {
 TaskScheduler::TaskScheduler(RobloxVMInstance *VM) {
     this->vm = VM;
     luau_context ctx = VM->main_synchronized;
-    ctx.new_table();
-    ctx.push_object(TaskScheduler::lua_task_spawn,"task::spawn");
-    ctx.rawset(-2,"spawn");
-    ctx.push_object(TaskScheduler::lua_task_defer,"task::defer");
-    ctx.rawset(-2,"defer");
-    ctx.push_object(TaskScheduler::lua_task_delay,"task::delay");
-    ctx.rawset(-2,"delay");
-    ctx.push_object(TaskScheduler::lua_task_synchronize,"task::synchronize");
-    ctx.rawset(-2,"synchronize");
-    ctx.push_object(TaskScheduler::lua_task_desynchronize,"task::desynchronize");
-    ctx.rawset(-2,"desynchronize");
-    ctx.push_object(TaskScheduler::lua_task_wait,"task::wait");
-    ctx.rawset(-2,"wait");
-    ctx.push_object(TaskScheduler::lua_task_cancel,"task::cancel");
-    ctx.rawset(-2,"cancel");
-    ctx.freeze(-1);
-    ctx.setglobal("task");
 
     ctx.new_table();
     ctx.setregistry("TASK_legacy_spawn");
@@ -529,6 +530,11 @@ int TaskScheduler::lua_task_delay(lua_State *L) {
     fn.assert_type_argument(1,"functionOrThread", LUA_TFUNCTION, LUA_TTHREAD);
     fn.assert_type_argument(2,"delay", LUA_TNUMBER);
     fn.assert_stack_size_vararg(2);
+    double delay = (double)fn.as_object(2);
+    if (delay < 0) delay = 0;
+    fn.push_object(delay + fn.clock(), 3);
+    RBLX_PRINT_VERBOSE("lua_task_delay: on stack pos 2 is_number = ",(fn.as_object(2).type == RBXVariant::Type::RBXVARIANT_NUM) ? "true" : "false");
+    RBLX_PRINT_VERBOSE("lua_task_delay: on stack pos 3 is_number = ",(fn.as_object(3).type == RBXVariant::Type::RBXVARIANT_NUM) ? "true" : "false");
     int nargs = fn.get_stack_size();
     bool isthread = false;
     if (fn.is_type(1, LUA_TFUNCTION)) {
@@ -536,7 +542,6 @@ int TaskScheduler::lua_task_delay(lua_State *L) {
         fn.new_thread(0);
         fn.remove_stack(1);
         fn.insert_into(1); // replace function with thread
-        fn.push_value(1,1);
     } else {
         isthread = true;
         fn.push_value(1);
@@ -544,12 +549,14 @@ int TaskScheduler::lua_task_delay(lua_State *L) {
         if (status != LUA_COSUS) {
             fn.error("cannot spawn a non-suspended thread (invalid argument #1)");
         }
+        fn.pop_stack(1);
     }
+    fn.push_value(1, 1); // copy thread into position 1 to return it
     fn.create_array_from_stack(nargs);
     fn.getregistry("TASK_await_delay");
-    fn.push_value(2);
+    fn.push_value(2); // pushes the new array
     fn.rawset(-2,fn.len(-2)+1);
-    return 1;
+    return 1; // returns thread
 }
 int TaskScheduler::lua_task_synchronize(lua_State *L) {
     return 0; // TODO: Implement desync/sync mode.
@@ -577,13 +584,158 @@ int TaskScheduler::lua_task_wait(lua_State *L) {
         delay = (double)fn.to_object(1);
     }
     fn.push_current_thread();
+    fn.push_object(delay);
     fn.push_object(delay+fn.clock());
-    fn.create_array_from_stack(2);
+    fn.create_array_from_stack(3);
     fn.getregistry("TASK_await_wait");
     fn.push_value(1);
     fn.rawset(-2,fn.len(-2)+1);
     fn.yield(0);
     return 0;
+}
+bool TaskScheduler::resume_cycle(lua_State *L) {
+    luau_context ctx = L;
+    int64_t iter;
+    // TODO: Implement deprecated stuff
+    // {thread, funcargs...}
+    ctx.getregistry("TASK_await_defer");
+    ctx.clone_table();
+    ctx.setregistry("TASK_await_defer"); // put new table in it
+    iter = 0;
+    while (true) {
+        luau_context for_loop_closure = L;
+        iter = ctx.rawiter(-1,iter);
+        if (iter == -1) break;
+        int nargs = ctx.push_vararg_array_and_pop(-1);
+        ctx.resume(nargs-1,0,0);
+    }
+    ctx.pop_stack(1);
+
+    // {thread, delay, time+delay, funcargs...}
+    ctx.getregistry("TASK_await_delay");
+    ctx.clone_table();
+    ctx.setregistry("TASK_await_delay"); // put new table in it
+    iter = 0;
+    while (true) {
+        luau_context for_loop_closure = L;
+        iter = ctx.rawiter(-1,iter);
+        if (iter == -1) break;
+        ctx.rawget(-1, 3);
+        double time = ctx.to_object();
+        if (time > ctx.clock()) {
+            ctx.rawget(-1, 2);
+            double time_to_wait = ctx.to_object();
+            int nargs = ctx.push_vararg_array_and_pop(-1);
+            ctx.remove_stack(-nargs+2); // remove time
+            ctx.remove_stack(-nargs+2); // remove time_to_wait
+            ctx.resume(nargs-3, 0, 0); // NOTE: I thought you had to supply how much it had to wait, nope!
+        }
+        //int nargs = ctx.push_vararg_array_and_pop(-1);
+    }
+    ctx.pop_stack(1);
+    
+    // {thread, delay, time+delay}
+    ctx.getregistry("TASK_await_wait");
+    ctx.clone_table();
+    ctx.setregistry("TASK_await_wait"); // put new table in it
+    iter = 0;
+    while (true) {
+        luau_context for_loop_closure = L;
+        iter = ctx.rawiter(-1,iter);
+        if (iter == -1) break;
+        ctx.rawget(-1, 3);
+        double time = ctx.to_object();
+        if (time > ctx.clock()) {
+            ctx.rawget(-1, 2);
+            double time_to_wait = ctx.to_object();
+            ctx.push_vararg_array_and_pop(-1);
+            ctx.pop_stack(2);
+            ctx.push_object(ctx.clock() - time + time_to_wait);
+            ctx.resume(1, 0, 0); // NOTE: I thought you had to supply how much it had to wait, nope!
+        }
+        //int nargs = ctx.push_vararg_array_and_pop(-1);
+    }
+    ctx.pop_stack(1);
+
+    ctx.getregistry("TASK_await_defer");
+    if (ctx.len(-1) > 0) return true;
+    ctx.getregistry("TASK_await_delay");
+    if (ctx.len(-1) > 0) return true;
+    ctx.getregistry("TASK_await_wait");
+    if (ctx.len(-1) > 0) return true;
+    return false;
+}
+bool TaskScheduler::resume_cycle(luau_State *L) {
+    luau_context ctx = L;
+    int64_t iter;
+    // TODO: Implement deprecated stuff
+    // {thread, funcargs...}
+    ctx.getregistry("TASK_await_defer");
+    ctx.clone_table();
+    ctx.setregistry("TASK_await_defer"); // put new table in it
+    iter = 0;
+    while (true) {
+        luau_context for_loop_closure = L;
+        iter = ctx.rawiter(-1,iter);
+        if (iter == -1) break;
+        int nargs = ctx.push_vararg_array_and_pop(-1);
+        ctx.resume(nargs-1,0,0);
+    }
+    ctx.pop_stack(1);
+
+    // {thread, delay, time+delay, funcargs...}
+    ctx.getregistry("TASK_await_delay");
+    ctx.clone_table();
+    ctx.setregistry("TASK_await_delay"); // put new table in it
+    iter = 0;
+    while (true) {
+        luau_context for_loop_closure = L;
+        iter = ctx.rawiter(-1,iter);
+        if (iter == -1) break;
+        ctx.rawget(-1, 3);
+        double time = ctx.to_object();
+        if (time > ctx.clock()) {
+            ctx.rawget(-1, 2);
+            double time_to_wait = ctx.to_object();
+            int nargs = ctx.push_vararg_array_and_pop(-1);
+            ctx.remove_stack(-nargs+2); // remove time
+            ctx.remove_stack(-nargs+2); // remove time_to_wait
+            ctx.resume(nargs-3, 0, 0); // NOTE: I thought you had to supply how much it had to wait, nope!
+        }
+        //int nargs = ctx.push_vararg_array_and_pop(-1);
+    }
+    ctx.pop_stack(1);
+    
+    // {thread, delay, time+delay}
+    ctx.getregistry("TASK_await_wait");
+    ctx.clone_table();
+    ctx.setregistry("TASK_await_wait"); // put new table in it
+    iter = 0;
+    while (true) {
+        luau_context for_loop_closure = L;
+        iter = ctx.rawiter(-1,iter);
+        if (iter == -1) break;
+        ctx.rawget(-1, 3);
+        double time = ctx.to_object();
+        if (time > ctx.clock()) {
+            ctx.rawget(-1, 2);
+            double time_to_wait = ctx.to_object();
+            ctx.push_vararg_array_and_pop(-1);
+            ctx.pop_stack(2);
+            ctx.push_object(ctx.clock() - time + time_to_wait);
+            ctx.resume(1, 0, 0); // NOTE: I thought you had to supply how much it had to wait, nope!
+        }
+        //int nargs = ctx.push_vararg_array_and_pop(-1);
+    }
+    ctx.pop_stack(1);
+
+    ctx.getregistry("TASK_await_defer");
+    if (ctx.len(-1) > 0) return true;
+    ctx.getregistry("TASK_await_delay");
+    if (ctx.len(-1) > 0) return true;
+    ctx.getregistry("TASK_await_wait");
+    if (ctx.len(-1) > 0) return true;
+    return false;
 }
 
 }

@@ -409,6 +409,22 @@ public:
             lua_remove(L, -2);
         }
     }
+    // pops array and pushes all arguments, returns how many arguments were pushed
+    inline int64_t push_vararg_array_and_pop(int tbl_idx = -1) { 
+        int64_t iter = 1;
+        int64_t nargs = 0;
+        tbl_idx = as_absolute_stack_index(tbl_idx);
+        while (true) {
+            rawget(tbl_idx,iter++);
+            if (is_type(-1,LUA_TNIL)) {
+                lua_pop(L, 1);
+                break;
+            }
+            nargs++;
+        }
+        lua_remove(L, tbl_idx);
+        return nargs;
+    }
     inline void clone_table(int tbl_idx = -1) {
         ::lua_pushvalue(L, tbl_idx);
         ::lua_newtable(L);
@@ -634,6 +650,8 @@ public:
 
     // Returns a LUA_STATUS
     int compile(const char* fname, LuaString code, int env_idx = 0);
+
+    inline luau_State* get_luau_state() { return ls; }
 };
 
 class luau_function_context : public luau_context {
@@ -849,6 +867,9 @@ public:
     static int lua_task_synchronize(lua_State *L);
     static int lua_task_wait(lua_State *L);
     static int lua_task_cancel(lua_State *L);
+
+    bool resume_cycle(lua_State *L);
+    bool resume_cycle(luau_State *L);
 };
 enum RBLX_VMRunContext {
     RUNCTXT_CORE,

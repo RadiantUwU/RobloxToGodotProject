@@ -56,7 +56,7 @@ protected:
     Instance* clone_object() const override;
     void before_start() override;
 public:
-    Script(RobloxVMInstance* vm) : BaseScript(vm) {}
+    Script(RobloxVMInstance* vm);
     ~Script();
     LuaString Source;
 
@@ -72,7 +72,7 @@ class LocalScript : public Script {
 protected:
     Instance* clone_object() const override;
 public:
-    LocalScript(RobloxVMInstance* vm) : Script(vm) {}
+    LocalScript(RobloxVMInstance* vm);
     bool is_a(const LuaString& s) const override;
     bool is_a(const InstanceType t) const override;
 };

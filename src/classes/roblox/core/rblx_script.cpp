@@ -266,6 +266,12 @@ int Script::lua_set(lua_State *L) {
     } else 
         return BaseScript::lua_set(L);
 }
+Script::Script(RobloxVMInstance *vm) : BaseScript(vm) {
+    InstanceClassWriteProxy proxy = this;
+    proxy->ClassName = "Script";
+    proxy->Type = T_SCRIPT;
+    Name = "Script";
+}
 Script::~Script() {
     setEnable(false, true);
 }
@@ -306,6 +312,12 @@ bool Script::is_a(const InstanceType t) const {
     }
 }
 
+LocalScript::LocalScript(RobloxVMInstance *vm) : Script(vm) {
+    InstanceClassWriteProxy proxy = this;
+    proxy->ClassName = "LocalScript";
+    proxy->Type = T_LOCALSCRIPT;
+    Name = "LocalScript";
+}
 Instance* LocalScript::clone_object() const {
     luau_context ctx = VM->main_synchronized;
     LocalScript* s = ctx.new_instance<LocalScript>(VM);
