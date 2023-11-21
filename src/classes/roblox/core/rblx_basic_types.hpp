@@ -22,18 +22,19 @@ struct LuaString {
             this->s[0] = '\0';
         } else {
             memcpy(this->s,c.ptr(),(l+1)*sizeof(char));
-            RBLX_PRINT_VERBOSE("Initializing LuaString with length of ", l, " with content ", this->s);
         }
     }
     LuaString() {
         s = nullptr;
         l = 0;
-        RBLX_PRINT_VERBOSE("Initializing LuaString with length of 0");
+    }
+    LuaString(std::nullptr_t) {
+        s = nullptr;
+        l = 0;
     }
     explicit LuaString(int len) {
         l = len;
         s = (char*)memalloc((l+1)*sizeof(char));
-        RBLX_PRINT_VERBOSE("Initializing LuaString with length of ", l, " with content ", s);
     }
     LuaString(const char* cs) {
         auto slen = strlen(cs);
@@ -43,7 +44,6 @@ struct LuaString {
             s[0] = 0;
         } else {
             strcpy(s, cs);
-            RBLX_PRINT_VERBOSE("Initializing LuaString with length of ", l, " with content ", s);
         }
     }
     LuaString(const char* cs, size_t len) {
@@ -53,7 +53,6 @@ struct LuaString {
             s[0] = 0;
         } else {
             memcpy(s,cs,(l+1)*sizeof(char));
-            RBLX_PRINT_VERBOSE("Initializing LuaString with length of ", l, " with content ", s);
         }
     }
     LuaString(const LuaString& o) {
@@ -63,12 +62,10 @@ struct LuaString {
             s[0] = 0;
         } else {
             memcpy(s,o.s,(l+1)*sizeof(char));
-            RBLX_PRINT_VERBOSE("Copying LuaString with length of ", l, " with content ", s);
         }
     }
     ~LuaString() {
-        RBLX_PRINT_VERBOSE("Deleting LuaString of length ",l);
-        memfree(s);
+        if (s != nullptr) memfree(s);
     }
     LuaString& operator=(const LuaString& o) {
         l = o.l;
@@ -77,7 +74,6 @@ struct LuaString {
             s[0] = 0;
         } else {
             memcpy(s,o.s,(l+1)*sizeof(char));
-            RBLX_PRINT_VERBOSE("Copying LuaString with length of ", l, " with content ", s);
         }
         return *this;
     }

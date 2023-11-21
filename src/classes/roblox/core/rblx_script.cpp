@@ -139,9 +139,7 @@ void BaseScript::setEnable(bool enable, bool now) {
         env_ref = ctx.new_ref(-1);
         add_ref(env_ref);
 
-        ctx.new_table();
-        ctx.push_object("k");
-        ctx.rawset(-2,"__mode");
+        ctx.getregistry("WEAKTABLE_K");
 
         ctx.new_table();
         ctx.push_value(-2);
@@ -209,7 +207,7 @@ void BaseScript::reload() {
     }
 }
 void BaseScript::before_start() {
-    if (LinkedSource != "[Embedded]" && LinkedSource != "") {
+    if (LinkedSource != "[Embedded]" || LinkedSource != "") {
         RuntimeSource = VM->open_script_asset(LinkedSource);
     }
 }

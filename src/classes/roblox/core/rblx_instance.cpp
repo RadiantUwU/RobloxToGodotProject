@@ -892,9 +892,6 @@ int Instance::lua_static_get(lua_State *L) {
 int Instance::lua_static_set(lua_State *L) {
     luau_function_context fn = L;
     RBLX_PRINT_VERBOSE("Instance::__newindex");
-    fn.getmetatable(-1);
-    auto mt = fn.as_pointer_hash(-1);
-    fn.pop_stack(1);
     fn.assert_usertype_argument(1, "self", fn.UD_TINSTANCE);
     fn.assert_type_argument(2, "key", LUA_TSTRING);
     Instance *i = fn.as_userdata<Instance>(1);

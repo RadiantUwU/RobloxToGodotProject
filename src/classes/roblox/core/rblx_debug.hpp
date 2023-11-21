@@ -1,7 +1,8 @@
 #ifndef RBLX_DEBUG
 #define RBLX_DEBUG
-#define VERBOSE_RBLX
-#ifdef VERBOSE_RBLX
+
+#ifndef NDEBUG
+#define RBLX_INLINE
 #include <iostream>
 namespace godot {
 namespace roblox_debug_private {
@@ -21,9 +22,22 @@ void RBLX_PRINT_VERBOSE(Args... args) {
     ::std::cout << "\n";
 }
 }
+#ifdef __GNUC__
+#define RBLX_NOINLINE [[gnu::noinline]]
+#else
+#ifdef _MSC_VER
+#define RBLX_NOINLINE __declspec(noinline)
+#else
+#ifdef __clang__
+#define RBLX_NOINLINE [[clang::noinline]]
+#endif
+#endif
+#endif
 #else
 // Dont even make it a function, let the compiler completely skip over it
 #define RBLX_PRINT_VERBOSE(...)
+#define RBLX_INLINE inline
+#define RBLX_NOINLINE
 #endif
 
 #endif

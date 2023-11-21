@@ -192,72 +192,72 @@ public:
         lua_unref(L, thr_ref);
         ls->mtx.unlock();
     }
-    inline void expect_empty_stack() {
+    RBLX_INLINE void expect_empty_stack() {
         last_stack_size = 0;
     }
-    inline void dont_clear_stack() {
+    RBLX_INLINE void dont_clear_stack() {
         last_stack_size = -1;
     }
-    inline void push_object() { ::lua_pushnil(L); }
-    inline void push_object(std::nullptr_t) { ::lua_pushnil(L); }
-    inline void push_object(bool b) { ::lua_pushboolean(L, b); }
-    inline void push_object(int64_t integer) { ::lua_pushinteger(L, integer); }
-    inline void push_object(int integer) { ::lua_pushinteger(L, integer); }
-    inline void push_object(double number) { ::lua_pushnumber(L, number); }
-    inline void push_object(lua_State *thr) { ::lua_pushthread(thr); ::lua_xmove(thr, L, 1); };
-    inline void push_object(const char* str) { ::lua_pushstring(L, str); }
-    inline void push_object(const char* str, size_t len) { ::lua_pushlstring(L, str, len); }
-    inline void push_object(lua_CFunction f, const char* fname = "<C++ context>") { lua_pushcfunction(L, f, fname); }
-    inline void push_object(void* p) { ::lua_pushlightuserdata(L, p); }
-    inline void push_cclosure(lua_CFunction f, int nup, const char* fname = "<C++ context>") { lua_pushcclosure(L, f, fname, nup); }
-    inline void push_object(const LuaObject& obj) { obj.get(ls); }
-    inline void push_object(const LuaString& s) { ::lua_pushlstring(L, s.s, s.l); }
+    RBLX_INLINE void push_object() { ::lua_pushnil(L); }
+    RBLX_INLINE void push_object(std::nullptr_t) { ::lua_pushnil(L); }
+    RBLX_INLINE void push_object(bool b) { ::lua_pushboolean(L, b); }
+    RBLX_INLINE void push_object(int64_t integer) { ::lua_pushinteger(L, integer); }
+    RBLX_INLINE void push_object(int integer) { ::lua_pushinteger(L, integer); }
+    RBLX_INLINE void push_object(double number) { ::lua_pushnumber(L, number); }
+    RBLX_INLINE void push_object(lua_State *thr) { ::lua_pushthread(thr); ::lua_xmove(thr, L, 1); };
+    RBLX_INLINE void push_object(const char* str) { ::lua_pushstring(L, str); }
+    RBLX_INLINE void push_object(const char* str, size_t len) { ::lua_pushlstring(L, str, len); }
+    RBLX_INLINE void push_object(lua_CFunction f, const char* fname = "<C++ context>") { lua_pushcfunction(L, f, fname); }
+    RBLX_INLINE void push_object(void* p) { ::lua_pushlightuserdata(L, p); }
+    RBLX_INLINE void push_cclosure(lua_CFunction f, int nup, const char* fname = "<C++ context>") { lua_pushcclosure(L, f, fname, nup); }
+    RBLX_INLINE void push_object(const LuaObject& obj) { obj.get(ls); }
+    RBLX_INLINE void push_object(const LuaString& s) { ::lua_pushlstring(L, s.s, s.l); }
     void push_object(const RBXVariant& v);
     void push_object(RBXScriptSignal* signal);
     void push_object(Instance* i);
-    inline void push_object(bool b, int idx) { ::lua_pushboolean(L, b); ::lua_insert(L, idx); }
-    inline void push_object(int64_t integer, int idx) { ::lua_pushinteger(L, integer); ::lua_insert(L, idx); }
-    inline void push_object(int integer, int idx) { ::lua_pushinteger(L, integer); ::lua_insert(L, idx); }
-    inline void push_object(double number, int idx) { ::lua_pushnumber(L, number); ::lua_insert(L, idx); }
-    inline void push_object(lua_State *thr, int idx) { ::lua_pushthread(thr); ::lua_xmove(thr, L, 1); ::lua_insert(L, idx); };
-    inline void push_object(const char* str, int idx) { ::lua_pushstring(L, str); ::lua_insert(L, idx); }
-    inline void push_object(const char* str, size_t len, int idx) { ::lua_pushlstring(L, str, len); ::lua_insert(L, idx); }
-    inline void push_object(const LuaObject& obj, int idx) { obj.get(ls); ::lua_insert(L, idx); }
-    inline void push_object(lua_CFunction f, const char* fname, int idx) { lua_pushcfunction(L, f, fname); ::lua_insert(L, idx); }
-    inline void push_object(void* p, int idx) { ::lua_pushlightuserdata(L, p); ::lua_insert(L, idx); }
-    inline void push_object(const LuaString& s, int idx) { ::lua_pushlstring(L, s.s, s.l); ::lua_insert(L, idx); }
+    RBLX_INLINE void push_object(bool b, int idx) { ::lua_pushboolean(L, b); ::lua_insert(L, idx); }
+    RBLX_INLINE void push_object(int64_t integer, int idx) { ::lua_pushinteger(L, integer); ::lua_insert(L, idx); }
+    RBLX_INLINE void push_object(int integer, int idx) { ::lua_pushinteger(L, integer); ::lua_insert(L, idx); }
+    RBLX_INLINE void push_object(double number, int idx) { ::lua_pushnumber(L, number); ::lua_insert(L, idx); }
+    RBLX_INLINE void push_object(lua_State *thr, int idx) { ::lua_pushthread(thr); ::lua_xmove(thr, L, 1); ::lua_insert(L, idx); };
+    RBLX_INLINE void push_object(const char* str, int idx) { ::lua_pushstring(L, str); ::lua_insert(L, idx); }
+    RBLX_INLINE void push_object(const char* str, size_t len, int idx) { ::lua_pushlstring(L, str, len); ::lua_insert(L, idx); }
+    RBLX_INLINE void push_object(const LuaObject& obj, int idx) { obj.get(ls); ::lua_insert(L, idx); }
+    RBLX_INLINE void push_object(lua_CFunction f, const char* fname, int idx) { lua_pushcfunction(L, f, fname); ::lua_insert(L, idx); }
+    RBLX_INLINE void push_object(void* p, int idx) { ::lua_pushlightuserdata(L, p); ::lua_insert(L, idx); }
+    RBLX_INLINE void push_object(const LuaString& s, int idx) { ::lua_pushlstring(L, s.s, s.l); ::lua_insert(L, idx); }
     void push_object(const RBXVariant& v, int idx);
     void push_object(RBXScriptSignal* signal, int idx);
     void push_object(Instance* i, int idx);
     template <typename T, typename... Others>
-    inline int push_objects(T o, Others... others) { push_object(o); return push_objects(others...)+1; }
+    RBLX_INLINE int push_objects(T o, Others... others) { push_object(o); return push_objects(others...)+1; }
     template <typename T>
-    inline int push_objects(T o) { push_object(o); return 1; }
-    inline void push_current_thread() { ::lua_pushthread(L); }
+    RBLX_INLINE int push_objects(T o) { push_object(o); return 1; }
+    RBLX_INLINE void push_current_thread() { ::lua_pushthread(L); }
     RBXVariant to_object();
     RBXVariant to_object(int idx);
     RBXVariant as_object();
     RBXVariant as_object(int idx);
-    inline lua_State* as_thread(int idx = -1) {return ::lua_tothread(L, idx); }
-    inline lua_CFunction as_cfunc(int idx = -1) {return ::lua_tocfunction(L, idx); }
-    inline int as_absolute_stack_index(int idx = -1) {return (idx > 0) ? idx : ::lua_gettop(L)+1-idx;}
-    inline void push_pointer_hash(int idx) { ::lua_pushinteger(L, (size_t)::lua_topointer(L, idx)); }
-    inline int64_t as_pointer_hash(int idx) { return (size_t)::lua_topointer(L, idx); }
+    RBLX_INLINE lua_State* as_thread(int idx = -1) {return ::lua_tothread(L, idx); }
+    RBLX_INLINE lua_CFunction as_cfunc(int idx = -1) {return ::lua_tocfunction(L, idx); }
+    RBLX_INLINE int as_absolute_stack_index(int idx = -1) {return (idx > 0) ? idx : ::lua_gettop(L)+1+idx;}
+    RBLX_INLINE void push_pointer_hash(int idx) { ::lua_pushinteger(L, (size_t)::lua_topointer(L, idx)); }
+    RBLX_INLINE int64_t as_pointer_hash(int idx) { return (size_t)::lua_topointer(L, idx); }
 
-    inline int get_type(int idx) { return ::lua_type(L, idx); }
-    inline int get_userdata_type(int idx) { return ::lua_userdatatag(L, idx); }
-    inline const char* get_typename(int idx) { return ::lua_typename(L, ::lua_type(L, idx)); }
-    inline const char* get_usertypename(int idx) {return (lua_type(L, idx) == LUA_TUSERDATA) ? user_types[::lua_userdatatag(L, idx)] : nullptr; }
-    inline const char* as_typename(int type) { return ::lua_typename(L, type); }
-    inline const char* as_usertypename(int utype) { return user_types[utype]; }
-    inline bool is_type(int idx, int type) { return ::lua_type(L, idx) == type; }
-    inline bool is_utype(int idx, int utype) { return (is_type(idx,LUA_TUSERDATA)) ? get_userdata_type(idx) == utype : false; }
-    inline bool is_cfunction(int idx) { return lua_iscfunction(L, idx); }
+    RBLX_INLINE int get_type(int idx) { return ::lua_type(L, idx); }
+    RBLX_INLINE int get_userdata_type(int idx) { return ::lua_userdatatag(L, idx); }
+    RBLX_INLINE const char* get_typename(int idx) { return ::lua_typename(L, ::lua_type(L, idx)); }
+    RBLX_INLINE const char* get_usertypename(int idx) {return (lua_type(L, idx) == LUA_TUSERDATA) ? user_types[::lua_userdatatag(L, idx)] : nullptr; }
+    RBLX_INLINE const char* as_typename(int type) { return ::lua_typename(L, type); }
+    RBLX_INLINE const char* as_usertypename(int utype) { return user_types[utype]; }
+    RBLX_INLINE bool is_type(int idx, int type) { return ::lua_type(L, idx) == type; }
+    RBLX_INLINE bool is_utype(int idx, int utype) { return (is_type(idx,LUA_TUSERDATA)) ? get_userdata_type(idx) == utype : false; }
+    RBLX_INLINE bool is_cfunction(int idx) { return lua_iscfunction(L, idx); }
 
-    inline void insert_into(int idx) { return ::lua_insert(L, idx); }
+    RBLX_INLINE void insert_into(int idx) { return ::lua_insert(L, idx); }
     
     template <typename T, typename... Args>
-    inline T* new_userdata(int utype, Args... args) {
+    RBLX_INLINE T* new_userdata(int utype, Args... args) {
         T* p = new (::lua_newuserdatatagged(L, sizeof(T), utype)) T(args...);
         rawget(LUA_REGISTRYINDEX,"USERDATA_METATABLES");
         rawget(-1,utype);
@@ -270,7 +270,7 @@ public:
         return p;
     }
     template <typename T>
-    inline T* new_instance(RobloxVMInstance* vm) {
+    RBLX_INLINE T* new_instance(RobloxVMInstance* vm) {
         static_assert(::std::is_base_of<Instance, T>::value, "To pass a type to new_instance you must pass a class that derives from Instance!");
         T* p = new (::lua_newuserdatatagged(L, sizeof(T), UD_TINSTANCE)) T(vm);
         p->setName((const char*)p->ClassName);
@@ -285,54 +285,54 @@ public:
         return p;
     }
     template <typename T>
-    inline T* as_userdata(int idx) { //unsafe
+    RBLX_INLINE T* as_userdata(int idx) { //unsafe
         return (T*)::lua_touserdata(L, idx);
     }
     template <typename T>
-    inline T* as_userdata(int idx, int utype) { //safe
+    RBLX_INLINE T* as_userdata(int idx, int utype) { //safe
         return (T*)::lua_touserdatatagged(L, idx, utype);
     }
-    inline void set_dtor(int tag, lua_Destructor dtor) { ::lua_setuserdatadtor(L, tag, dtor); }
-    inline void setmetatable(int object_idx) {
+    RBLX_INLINE void set_dtor(int tag, lua_Destructor dtor) { ::lua_setuserdatadtor(L, tag, dtor); }
+    RBLX_INLINE void setmetatable(int object_idx) {
         ::lua_setmetatable(L, object_idx);
     }
-    inline void setmetatable(int object_idx, int metatable_idx) {
+    RBLX_INLINE void setmetatable(int object_idx, int metatable_idx) {
         ::lua_pushvalue(L, metatable_idx);
         ::lua_setmetatable(L, (object_idx < 0) ? object_idx-1 : object_idx);
         ::lua_remove(L, metatable_idx);
     }
-    inline int getmetatable(int object_idx) {
+    RBLX_INLINE int getmetatable(int object_idx) {
         return ::lua_getmetatable(L, object_idx);
     }
-    inline void newmetatable_type(int utype) {
+    RBLX_INLINE void newmetatable_type(int utype) {
         rawget(LUA_REGISTRYINDEX,"USERDATA_METATABLES");
         new_table();
         push_value(-1);
         rawset(-3,utype);
     }
 
-    inline void freeze(int tbl_idx) {
+    RBLX_INLINE void freeze(int tbl_idx) {
         ::lua_setreadonly(L, tbl_idx, true);
     }
-    inline void unfreeze(int tbl_idx) {
+    RBLX_INLINE void unfreeze(int tbl_idx) {
         ::lua_setreadonly(L, tbl_idx, false);
     }
-    inline bool is_frozen(int tbl_idx) {
+    RBLX_INLINE bool is_frozen(int tbl_idx) {
         return ::lua_getreadonly(L, tbl_idx);   
     }
 
-    inline bool has_argument(int argn) { return !lua_isnone(L, argn); }
-    inline void assert_has_argument(int argn, const char* argname) {
+    RBLX_INLINE bool has_argument(int argn) { return !lua_isnone(L, argn); }
+    RBLX_INLINE void assert_has_argument(int argn, const char* argname) {
         if (lua_isnone(L, argn)) 
             errorf("missing argument #%d to '%s' (any expected)", argn, argname);
     }
-    inline void assert_type_argument(int argn, const char* argname, int type) {
+    RBLX_INLINE void assert_type_argument(int argn, const char* argname, int type) {
         if (lua_isnone(L, argn)) 
             errorf("missing argument #%d to '%s' (%s expected)", argn, argname, lua_typename(L, type));
         if (!is_type(argn, type)) 
             errorf("invalid argument #%d to '%s' (%s expected, got %s)", argn, argname, lua_typename(L, type), get_typename(argn));
     }
-    inline void assert_usertype_argument(int argn, const char* argname, int utype) {
+    RBLX_INLINE void assert_usertype_argument(int argn, const char* argname, int utype) {
         if (lua_isnone(L, argn)) 
             errorf("missing argument #%d to '%s' (%s expected)", argn, argname, user_types[utype]);
         if (!lua_isuserdata(L, argn)) 
@@ -340,37 +340,37 @@ public:
         if (lua_userdatatag(L, argn) != utype) 
             errorf("invalid argument #%d to '%s' (%s expected, got %s)", argn, argname, user_types[utype], user_types[lua_userdatatag(L, argn)]);
     }
-    inline void assert_type_argument(int argn, const char* argname, int type1, int type2) {
+    RBLX_INLINE void assert_type_argument(int argn, const char* argname, int type1, int type2) {
         if (lua_isnone(L, argn)) 
             errorf("missing argument #%d to '%s' (%s|%s expected)", argn, argname, lua_typename(L, type1), lua_typename(L, type2));
         if (!is_type(argn, type1) and !is_type(argn, type2)) 
             errorf("invalid argument #%d to '%s' (%s|%s expected, got %s)", argn, argname, lua_typename(L, type1), lua_typename(L, type2), get_typename(argn));
     }
-    inline void assert_stack_size(int x) {
+    RBLX_INLINE void assert_stack_size(int x) {
         if (lua_gettop(L) != x)
             errorf("expected %d arguments, got %d",x,lua_gettop(L));
     }
-    inline void assert_stack_size(int req, int opt) {
+    RBLX_INLINE void assert_stack_size(int req, int opt) {
         if (lua_gettop(L) > req+opt)
             errorf("expected %d-%d arguments, got %d",req,req+opt,lua_gettop(L));
         if (lua_gettop(L) < req)
             errorf("expected %d-%d arguments, got %d",req,req+opt,lua_gettop(L));
     }
-    inline void assert_stack_size_vararg(int req) {
+    RBLX_INLINE void assert_stack_size_vararg(int req) {
         if (lua_gettop(L) < req)
             errorf("expected %d arguments minimum, got %d",req,lua_gettop(L));
     }
-    inline void assert_stack_size_vararg(int req, int opt) {
+    RBLX_INLINE void assert_stack_size_vararg(int req, int opt) {
         if (lua_gettop(L) < req)
             errorf("expected %d arguments minimum, got %d",req,lua_gettop(L));
     }
 
-    inline void pop_stack(int n) { lua_pop(L, n); }
-    inline void remove_stack(int idx) { lua_remove(L, idx); }
-    inline int get_stack_size() { return lua_gettop(L); }
-    inline void push_value(int idx) { lua_pushvalue(L, idx); }
-    inline void push_value(int idx, int idxdest) { lua_pushvalue(L, idx); lua_insert(L, idxdest); }
-    inline void clear_stack() { 
+    RBLX_INLINE void pop_stack(int n) { lua_pop(L, n); }
+    RBLX_INLINE void remove_stack(int idx) { lua_remove(L, idx); }
+    RBLX_INLINE int get_stack_size() { return lua_gettop(L); }
+    RBLX_INLINE void push_value(int idx) { lua_pushvalue(L, idx); }
+    RBLX_INLINE void push_value(int idx, int idxdest) { lua_pushvalue(L, idx); lua_insert(L, idxdest); }
+    RBLX_INLINE void clear_stack() { 
         if (last_stack_size < 0) return; 
         int64_t s = lua_gettop(L) - last_stack_size;
         if (s>0) {
@@ -379,53 +379,45 @@ public:
         }
     }
 
-    inline int get(int tbl_idx) { return lua_gettable(L, tbl_idx); }
-    inline int get(int tbl_idx, const char* field) { return lua_getfield(L, tbl_idx, field); }
-    inline int get(int tbl_idx, int64_t i) { lua_pushnumber(L, i); return lua_gettable(L, (tbl_idx < 0 && !lua_ispseudo(tbl_idx)) ? tbl_idx-1 : tbl_idx); }
-    inline void set(int tbl_idx) { lua_settable(L, tbl_idx); }
-    inline void set(int tbl_idx, const char* field) { lua_setfield(L, tbl_idx, field); }
-    inline void set(int tbl_idx, int64_t i) { lua_pushnumber(L, i); lua_pushvalue(L, -2); lua_settable(L, (tbl_idx < 0 && !lua_ispseudo(tbl_idx)) ? tbl_idx-2 : tbl_idx); }
-    inline int rawget(int tbl_idx) { return lua_rawget(L, tbl_idx); }
-    inline int rawget(int tbl_idx, const char* field) { return lua_rawgetfield(L, tbl_idx, field); }
-    inline int rawget(int tbl_idx, int64_t i) { return lua_rawgeti(L, tbl_idx, i); }
-    inline void rawset(int tbl_idx) { lua_rawset(L, tbl_idx); }
-    inline void rawset(int tbl_idx, const char* field) { lua_rawsetfield(L, tbl_idx, field); }
-    inline void rawset(int tbl_idx, int64_t i) { lua_rawseti(L, tbl_idx, i); }
-    inline int len(int idx) { return lua_objlen(L, idx); }
+    RBLX_INLINE int get(int tbl_idx) { return lua_gettable(L, tbl_idx); }
+    RBLX_INLINE int get(int tbl_idx, const char* field) { return lua_getfield(L, tbl_idx, field); }
+    RBLX_INLINE int get(int tbl_idx, int64_t i) { lua_pushnumber(L, i); return lua_gettable(L, (tbl_idx < 0 && !lua_ispseudo(tbl_idx)) ? tbl_idx-1 : tbl_idx); }
+    RBLX_INLINE void set(int tbl_idx) { lua_settable(L, tbl_idx); }
+    RBLX_INLINE void set(int tbl_idx, const char* field) { lua_setfield(L, tbl_idx, field); }
+    RBLX_INLINE void set(int tbl_idx, int64_t i) { lua_pushnumber(L, i); lua_pushvalue(L, -2); lua_settable(L, (tbl_idx < 0 && !lua_ispseudo(tbl_idx)) ? tbl_idx-2 : tbl_idx); }
+    RBLX_INLINE int rawget(int tbl_idx) { return lua_rawget(L, tbl_idx); }
+    RBLX_INLINE int rawget(int tbl_idx, const char* field) { return lua_rawgetfield(L, tbl_idx, field); }
+    RBLX_INLINE int rawget(int tbl_idx, int64_t i) { return lua_rawgeti(L, tbl_idx, i); }
+    RBLX_INLINE void rawset(int tbl_idx) { lua_rawset(L, tbl_idx); }
+    RBLX_INLINE void rawset(int tbl_idx, const char* field) { lua_rawsetfield(L, tbl_idx, field); }
+    RBLX_INLINE void rawset(int tbl_idx, int64_t i) { lua_rawseti(L, tbl_idx, i); }
+    RBLX_INLINE int len(int idx) { return lua_objlen(L, idx); }
 
-    inline int rawiter(int idx, int iter) { return lua_rawiter(L, idx, iter); }
-    inline int next(int idx) { return lua_next(L, idx); }
+    RBLX_INLINE int rawiter(int idx, int iter) { return lua_rawiter(L, idx, iter); }
+    RBLX_INLINE int next(int idx) { return lua_next(L, idx); }
 
-    inline void new_table() { lua_newtable(L); }
-    inline void new_array(int n) { lua_createtable(L, n, 0); }
-    inline void new_dictionary(int n) { lua_createtable(L, 0, n); }
-    inline void create_array_from_stack(int nargs) { // pops arguments and replaces them with a table
-        lua_createtable(L, nargs, 0);
-        for (int i = 0; i < nargs; i++) {
-            lua_pushvalue(L, -nargs-1+i);
-            lua_rawseti(L, -2, i+1);
-        }
-        for (int i = 0; i < nargs; i++) {
-            lua_remove(L, -2);
+    RBLX_INLINE void new_table() { lua_newtable(L); }
+    RBLX_INLINE void new_array(int n) { lua_createtable(L, n, 0); }
+    RBLX_INLINE void new_dictionary(int n) { lua_createtable(L, 0, n); }
+    RBLX_INLINE void create_array_from_stack(int nargs) { // pops arguments and replaces them with a table
+        new_array(nargs);
+        lua_insert(L, -nargs-1);
+        int tbl_idx = as_absolute_stack_index(-nargs-1);
+        for (int i = nargs; i > 0; i--) {
+            lua_rawseti(L, tbl_idx, i);
         }
     }
     // pops array and pushes all arguments, returns how many arguments were pushed
-    inline int64_t push_vararg_array_and_pop(int tbl_idx = -1) { 
-        int64_t iter = 1;
-        int64_t nargs = 0;
+    RBLX_INLINE int64_t push_vararg_array_and_pop(int tbl_idx = -1) { 
         tbl_idx = as_absolute_stack_index(tbl_idx);
-        while (true) {
-            rawget(tbl_idx,iter++);
-            if (is_type(-1,LUA_TNIL)) {
-                lua_pop(L, 1);
-                break;
-            }
-            nargs++;
+        int64_t nargs = len(tbl_idx);
+        for (int64_t iter = 1; iter <= nargs; iter++) {
+            rawget(tbl_idx,iter);
         }
         lua_remove(L, tbl_idx);
         return nargs;
     }
-    inline void clone_table(int tbl_idx = -1) {
+    RBLX_INLINE void clone_table(int tbl_idx = -1) {
         ::lua_pushvalue(L, tbl_idx);
         ::lua_newtable(L);
         int iter = 0;
@@ -438,7 +430,7 @@ public:
             ::lua_rawset(L, -3);
         }
     }
-    inline void clear_table(int tbl_idx = -1) {
+    RBLX_INLINE void clear_table(int tbl_idx = -1) {
         tbl_idx = as_absolute_stack_index(tbl_idx);
         clone_table(tbl_idx);
         int iter = 0;
@@ -454,32 +446,37 @@ public:
         }
     }
 
-    inline int getglobal(const char* name) { return lua_rawgetfield(L, LUA_GLOBALSINDEX, name); }
-    inline void setglobal(const char* name) { lua_rawsetfield(L, LUA_GLOBALSINDEX, name); }
-    inline int getregistry(const char* name) { return lua_rawgetfield(L, LUA_REGISTRYINDEX, name); }
-    inline void setregistry(const char* name) { lua_rawsetfield(L, LUA_REGISTRYINDEX, name); }
+    RBLX_INLINE int getglobal(const char* name) { return lua_rawgetfield(L, LUA_GLOBALSINDEX, name); }
+    RBLX_INLINE void setglobal(const char* name) { lua_rawsetfield(L, LUA_GLOBALSINDEX, name); }
+    RBLX_INLINE int getregistry(const char* name) { return lua_rawgetfield(L, LUA_REGISTRYINDEX, name); }
+    RBLX_INLINE void setregistry(const char* name) { lua_rawsetfield(L, LUA_REGISTRYINDEX, name); }
 
-    inline void call(int nargs, int nres) { lua_call(L, nargs, nres); }
-    inline int pcall(int nargs, int nres, int errfuncidx = 0) {
+    RBLX_INLINE void call(int nargs, int nres) { lua_call(L, nargs, nres); }
+    RBLX_INLINE int pcall(int nargs, int nres, int errfuncidx = 0) {
         return lua_pcall(L, nargs, nres, errfuncidx);
     }
-    inline double clock() {
+    RBLX_INLINE double clock() {
         return lua_clock();
     }
-    [[noreturn]] inline void error() {
+    [[noreturn]] RBLX_INLINE void error() {
         lua_error(L);
     }
-    [[noreturn]] inline void error(const char *s) {
+    [[noreturn]] RBLX_INLINE void error(const char *s) {
         lua_pushstring(L, s);
         lua_error(L);
     }
+    template <typename T>
+    [[noreturn]] RBLX_INLINE void errorf(const char *fmt, T args) {
+        lua_pushfstringL(L, fmt, args);
+        lua_error(L);
+    }
     template <typename... T>
-    [[noreturn]] inline void errorf(const char *fmt, T... args) {
+    [[noreturn]] RBLX_INLINE void errorf(const char *fmt, T... args) {
         lua_pushfstringL(L, fmt, args...);
         lua_error(L);
     }
 
-    inline void yield(int nargs) {
+    RBLX_INLINE void yield(int nargs) {
         lua_yield(L, nargs);
     }
     // MAIN: [...], [errfunc], [...], [coro], [args] -> [...], [errfunc], [...], [res]
@@ -496,7 +493,7 @@ public:
         lua_State* thr = lua_tothread(L, -1-nargs);
         if (thr == nullptr) this->errorf("Internal error: expected thread at position %d, got a non-thread object/null.",-1-nargs);
         lua_xmove(L, thr, nargs);
-        int status = lua_resume(L, thr, nargs);
+        int status = lua_resume(thr, L, nargs);
         retnres = lua_gettop(thr);
         errfuncidx = (errfuncidx < 0 && !lua_ispseudo(errfuncidx)) ? errfuncidx+nargs : errfuncidx;
         if (status != LUA_OK and status != LUA_YIELD) {
@@ -520,65 +517,59 @@ public:
         return status;
     }
     // [...], [Function], [nargs] -> [...], [thread]
-    inline lua_State* new_thread(int nargs) { 
+    RBLX_INLINE lua_State* new_thread(int nargs) { 
         lua_State* thr = lua_newthread(L);
-        int ref = lua_ref(L, -1); // create temporary reference and delete the thread so it doesnt get GC'd
-        lua_pop(L, 1);
+        insert_into(-2-nargs);
         lua_xmove(L, thr, 1+nargs);
-        lua_getref(L, ref);
-        lua_unref(L, ref);
         return thr; // if they wanna use it anyways, its on stack
     }
     // [...], [Function], [nargs] -> [...], [thread]
-    inline lua_State* new_thread(int nargs, BaseScript* attached_script) { 
+    RBLX_INLINE lua_State* new_thread(int nargs, BaseScript* attached_script) { 
         lua_State* thr = lua_newthread(L);
-        int ref = lua_ref(L, -1); // create temporary reference and delete the thread so it doesnt get GC'd
-        lua_pop(L, 1);
+        insert_into(-2-nargs);
         lua_xmove(L, thr, 1+nargs);
-        lua_getref(L, ref);
-        lua_unref(L, ref);
         lua_setthreaddata(thr, attached_script);
         return thr; // if they wanna use it anyways, its on stack
     }
-    inline BaseScript* get_attached_script() {
+    RBLX_INLINE BaseScript* get_attached_script() {
         return (BaseScript*)lua_getthreaddata(L);
     }
-    inline BaseScript* get_attached_script(lua_State *thr) {
+    RBLX_INLINE BaseScript* get_attached_script(lua_State *thr) {
         return (BaseScript*)lua_getthreaddata(thr);
     }
     // [...], [thread] -> [...]
-    inline int status() {
+    RBLX_INLINE int status() {
         lua_State* thr = lua_tothread(L, -1);
         int status = lua_status(thr);
         lua_pop(L, 1);
         return status;
     }
     // [...] -> [...]
-    inline int status(lua_State *thr) {
+    RBLX_INLINE int status(lua_State *thr) {
         return lua_status(thr);
     }
     // [...], [thread] -> [...]
-    inline void close() {
+    RBLX_INLINE void close() {
         lua_State* thr = lua_tothread(L, -1);
         if (thr != L and lua_mainthread(L) != thr) lua_resetthread(thr);
         lua_pop(L, 1);
     }
     // [...], [thread] -> [...]
-    inline void close(lua_State *thr) {
+    RBLX_INLINE void close(lua_State *thr) {
         if (thr != L and lua_mainthread(L) != thr) lua_resetthread(thr);
     }
     // [...], [thread] -> [...]
-    inline int costatus() {
+    RBLX_INLINE int costatus() {
         lua_State* thr = lua_tothread(L, -1);
         int status = lua_costatus(L, thr);
         lua_pop(L, 1);
         return status;
     }
     // [...] -> [...]
-    inline int costatus(lua_State *thr) {
+    RBLX_INLINE int costatus(lua_State *thr) {
         return lua_costatus(L, thr);
     }
-    inline bool can_yield() {
+    RBLX_INLINE bool can_yield() {
         return lua_isyieldable(L);
     }
 
@@ -598,49 +589,90 @@ public:
         }
         return d;
     }
-    [[noreturn]] inline void dbg_break() { ::lua_break(L); }
+    RBLX_INLINE void dbg_break() { ::lua_break(L); }
 
-    inline const char* getlocal(int level, int n) {
+    RBLX_INLINE const char* getlocal(int level, int n) {
         return lua_getlocal(L, level, n);
     }
-    inline void getfenv(int funcidx) { lua_getfenv(L, funcidx); }
-    inline void setfenv(int funcidx) { lua_setfenv(L, funcidx); }
-    inline const char* getupvalue(int funcidx, int n) { return lua_getupvalue(L, funcidx, n); }
-    inline const char* getupvalue_level(int level, int n) { 
+    RBLX_INLINE void getfenv(int funcidx) { lua_getfenv(L, funcidx); }
+    RBLX_INLINE void setfenv(int funcidx) { lua_setfenv(L, funcidx); }
+    RBLX_INLINE const char* getupvalue(int funcidx, int n) { return lua_getupvalue(L, funcidx, n); }
+    RBLX_INLINE const char* getupvalue_level(int level, int n) { 
         delete getinfo("f",level);
         const char *ret = lua_getupvalue(L, -1, n);
         lua_remove(L, (ret == nullptr) ? -1 : -2);
         return ret;
     }
-    inline const char* setupvalue(int funcidx, int n) { return lua_setupvalue(L, funcidx, n); }
-    inline const char* setupvalue_level(int level, int n) { 
+    RBLX_INLINE const char* setupvalue(int funcidx, int n) { return lua_setupvalue(L, funcidx, n); }
+    RBLX_INLINE const char* setupvalue_level(int level, int n) { 
         delete getinfo("f",level);
         const char *ret = lua_setupvalue(L, -1, n);
         lua_remove(L, (ret == nullptr) ? -1 : -2);
         return ret;
     }
-    inline void getfenv_level(int level) { 
+    RBLX_INLINE void getfenv_level(int level) { 
         delete getinfo("f",level);
         lua_getfenv(L, -1);
         lua_remove(L, -2);
     }
-    inline void setfenv_level(int level) { 
+    RBLX_INLINE void setfenv_level(int level) { 
         delete getinfo("f",level);
         lua_insert(L, -2);
         lua_setfenv(L, -2); 
         lua_remove(L, -1);
     }
 
-    inline int64_t new_ref(int idx) { int ref = lua_ref(L, idx); lua_remove(L, idx); return ref; }
-    inline void push_ref(int64_t ref) { lua_getref(L, ref); }
-    inline void delete_ref(int64_t ref) { lua_unref(L, ref); }
+    RBLX_INLINE int64_t new_ref(int idx) { int ref = lua_ref(L, idx); lua_remove(L, idx); return ref; }
+    RBLX_INLINE void push_ref(int64_t ref) { lua_getref(L, ref); }
+    RBLX_INLINE void delete_ref(int64_t ref) { lua_unref(L, ref); }
 
-    inline void move_args(lua_State *to, int amount) {::lua_xmove(L, to, amount);}
-    inline void copy_arg(lua_State *to, int idx) {::lua_xpush(L, to, idx); }
+    RBLX_INLINE void move_args(lua_State *to, int amount) {::lua_xmove(L, to, amount);}
+    RBLX_INLINE void copy_arg(lua_State *to, int idx) {::lua_xpush(L, to, idx); }
 
-    inline bool rawequal(int idx1, int idx2) { return ::lua_rawequal(L, idx1, idx2); }
+    RBLX_INLINE bool rawequal(int idx1, int idx2) { return ::lua_rawequal(L, idx1, idx2); }
+#ifndef NDEBUG
+#include <iostream>
+private:
+    RBLX_NOINLINE void _print_stack(int n = -1) {
+        if (n == -1) {
+            bool began = true;
+            std::cout << "[ ";
+            for (int i = 1; i <= get_stack_size(); i++) {
+                if (!began) std::cout<<", ";
+                if (is_type(i, LUA_TTABLE)) {
+                    std::cout << "{ len: " << len(i) << " }";
+                } else {
+                    std::cout << ((is_type(i, LUA_TUSERDATA)) ? get_usertypename(i) : get_typename(i));
+                }
+                began = false;
+            }
+        } else {
+            bool began = true;
+            std::cout << "[ ... ";
+            int stk_size = get_stack_size();
+            for (int i = stk_size; i > last_stack_size; i--) {
+                if (!began) std::cout<<", ";
+                if (is_type(-i, LUA_TTABLE)) {
+                    std::cout << "{ len: " << len(i) << " }";
+                } else {
+                    std::cout << ((is_type(i, LUA_TUSERDATA)) ? get_usertypename(i) : get_typename(i));
+                }
+                began = false;
+            }
+        }
+        std::cout << " ]\n";
+    }
+public:
+    RBLX_NOINLINE void print_stack() {
+        if (last_stack_size == -1) print_stack_absolute();
+        else _print_stack(::lua_gettop(L)-last_stack_size);
+    }
+    RBLX_NOINLINE void print_stack_absolute() {
+        _print_stack();
+    }
+#endif
 
-    inline RobloxVMInstance* get_vm() {
+    RBLX_INLINE RobloxVMInstance* get_vm() {
         getregistry("ROBLOX_VM");
         RobloxVMInstance* vm = (RobloxVMInstance*)::lua_tolightuserdata(L, -1);
         lua_pop(L, 1);
@@ -651,7 +683,7 @@ public:
     // Returns a LUA_STATUS
     int compile(const char* fname, LuaString code, int env_idx = 0);
 
-    inline luau_State* get_luau_state() { return ls; }
+    RBLX_INLINE luau_State* get_luau_state() { return ls; }
 };
 
 class luau_function_context : public luau_context {

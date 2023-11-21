@@ -24,17 +24,8 @@ private:
     lua_State* L;
     void create_metatables();
 
-    static int task_create(lua_State *L);
-    static int task_defer(lua_State *L);
-    static int task_delay(lua_State *L);
-    static int task_desynchronize(lua_State *L);
-    static int task_synchronize(lua_State *L);
-    static int task_wait(lua_State *L);
-    static int task_cancel(lua_State *L);
-
     void handle_error(lua_State *thread);
     void terminate_error(lua_State *thread);
-    bool task_resumption_cycle(bool terminate = false);
 protected:
     static void _bind_methods();
     static void _bind_passthrough_methods();
