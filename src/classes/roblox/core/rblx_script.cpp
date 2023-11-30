@@ -132,9 +132,11 @@ void BaseScript::setEnable(bool enable, bool now) {
         }// TODO: Implement if actor exists
         luau_context ctx = L;
 
-        ctx.new_dictionary(1);
+        ctx.new_dictionary(2);
         ctx.push_object(this);
         ctx.rawset(-2,"script");
+        ctx.getglobal("print");
+        ctx.rawset(-2,"print");
         ctx.push_value(-1);
         env_ref = ctx.new_ref(-1);
         add_ref(env_ref);
@@ -156,6 +158,12 @@ void BaseScript::setEnable(bool enable, bool now) {
         before_start();
         ctx.compile(Name,RuntimeSource,-1);
         ctx.new_thread(0, this);
+
+        ctx.push_ref(threads_ref);
+        ctx.push_value(-1);
+        ctx.push_object(true);
+        ctx.rawset(-3);
+        ctx.pop_stack(1);
 
         if (now) ctx.push_object(ctx.get_task_scheduler()->lua_task_spawn,"task::spawn",-2);
         else ctx.push_object(ctx.get_task_scheduler()->lua_task_defer,"task::defer",-2);
@@ -207,7 +215,7 @@ void BaseScript::reload() {
     }
 }
 void BaseScript::before_start() {
-    if (LinkedSource != "[Embedded]" || LinkedSource != "") {
+    if (LinkedSource != "[Embedded]" && LinkedSource != "") {
         RuntimeSource = VM->open_script_asset(LinkedSource);
     }
 }
@@ -257,6 +265,13 @@ int Script::lua_set(lua_State *L) {
                 if (this->property_signals.has("Source")) {
                     this->property_signals.get("Source")->Fire(v);
                 }
+                should_fire = LinkedSource != "[Embedded]";
+                if (should_fire) {
+                    this->Changed->Fire("LinkedSource");
+                    if (this->property_signals.has("LinkedSource")) {
+                        this->property_signals.get("LinkedSource")->Fire(v);
+                    }
+                }
             }
             return 0;
         }
@@ -269,6 +284,7 @@ Script::Script(RobloxVMInstance *vm) : BaseScript(vm) {
     proxy->ClassName = "Script";
     proxy->Type = T_SCRIPT;
     Name = "Script";
+    RunContext = RunContext_Legacy;
 }
 Script::~Script() {
     setEnable(false, true);

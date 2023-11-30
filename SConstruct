@@ -19,7 +19,7 @@ lua_env.Append(CPPDEFINES = ["MAKE_LIB"])
 lua_env.Append(CXXFLAGS = ["-std=c++17"])
 lua_env.Append(CFLAGS = ["-std=c99"])
 
-module_env.Append(CXXFLAGS = ["-Wno-non-pod-varargs","-Wno-string-compare"])
+module_env.Append(CXXFLAGS = ["-Wno-non-pod-varargs"])
 
 cpp_paths = [Dir("src").abspath, Dir("/").abspath, Dir("src/classes/roblox").abspath]
 lua_cpp_paths = []

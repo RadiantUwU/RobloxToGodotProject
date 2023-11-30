@@ -6,6 +6,7 @@
 #include "rblx_instance.hpp"
 #include "rblx_events.hpp"
 #include "rblx_debug.hpp"
+#include "rblx_script.hpp"
 
 namespace godot {
 
@@ -28,6 +29,16 @@ static lua_CompileOptions rblx_vm_compile_options = {
     // const char** mutableGlobals;
 };
 
+luau_State::luau_State(RobloxVMInstance *VM, lua_State *state) {
+    L = state;
+    ::lua_pushlightuserdata(L, this);
+    ::lua_rawsetfield(L, LUA_REGISTRYINDEX, "LUAU_STATE");
+    ::lua_newtable(L);
+    ::lua_rawsetfield(L, LUA_REGISTRYINDEX, "USERDATA_METATABLES");
+    ::lua_pushlightuserdata(L, VM);
+    ::lua_rawsetfield(L, LUA_REGISTRYINDEX, "ROBLOX_VM");
+    errhandle = &TaskScheduler::lua_task_error_handler;
+}
 luau_State::luau_State(RobloxVMInstance *VM) {
     vm = VM;
     L = vm->create_lua_state();
@@ -35,6 +46,7 @@ luau_State::luau_State(RobloxVMInstance *VM) {
     ::lua_rawsetfield(L, LUA_REGISTRYINDEX, "LUAU_STATE");
     ::lua_newtable(L);
     ::lua_rawsetfield(L, LUA_REGISTRYINDEX, "USERDATA_METATABLES");
+    errhandle = &TaskScheduler::lua_task_error_handler;
 }
 luau_State::~luau_State() {
     ::lua_close(this->L);
@@ -445,6 +457,35 @@ void RobloxVMInstance::register_registry(lua_State *L) {
     ctx.push_object("V");
     ctx.rawset(-2,"__mode");
     ctx.setregistry("WEAKTABLE_V");
+
+    ctx.getglobal("debug");
+    ctx.get(-1,"traceback");
+    ctx.setregistry("db_traceback");
+    ctx.pop_stack(1);
+    ctx.getglobal("string");
+    ctx.get(-1,"format");
+    ctx.setregistry("str_format");
+    ctx.get(-1,"pack");
+    ctx.setregistry("str_pack");
+    ctx.get(-1,"packsize");
+    ctx.setregistry("str_packsize");
+    ctx.get(-1,"unpack");
+    ctx.setregistry("str_unpack");
+    ctx.pop_stack(1);
+
+    ctx.getglobal("print"),
+    ctx.setregistry("LOG_MESSAGE_F");
+    ctx.getglobal("print"),
+    ctx.setregistry("LOG_INFO_F");
+    ctx.getglobal("print"),
+    ctx.setregistry("LOG_WARN_F");
+    ctx.getglobal("print"),
+    ctx.setregistry("LOG_ERR_F");
+
+    ctx.getglobal("tostring");
+    ctx.setregistry("tostring");
+    ctx.getglobal("tonumber");
+    ctx.setregistry("tonumber");
 }
 RobloxVMInstance::RobloxVMInstance(lua_State *main) {
     main_synchronized = new(memalloc(sizeof(luau_State))) luau_State(this, main);;
@@ -497,8 +538,8 @@ int TaskScheduler::lua_task_spawn(lua_State *L) {
         }
     }
     fn.push_value(1,1);
-    fn.resume((isthread) ? fn.get_stack_size()-2 : 0, 0, 0); // TODO: Implement error handler function
-    return 1;
+    fn.resume((isthread) ? fn.get_stack_size()-2 : 0, 0); // TODO: Implement error handler function
+    return fn.lua_return(1);
 }
 int TaskScheduler::lua_task_defer(lua_State *L) {
     luau_function_context fn = L;
@@ -506,16 +547,11 @@ int TaskScheduler::lua_task_defer(lua_State *L) {
     fn.assert_stack_size_vararg(1);
     int nargs = fn.get_stack_size();
     bool isthread = false;
-#ifndef NDEBUG
-    RBLX_PRINT_VERBOSE("task::defer new");
-    fn.print_stack();
-#endif
     if (fn.is_type(1, LUA_TFUNCTION)) {
         fn.push_value(1);
         fn.new_thread(0);
         fn.remove_stack(1);
         fn.insert_into(1); // replace function with thread
-        fn.push_value(1,1);
     } else {
         isthread = true;
         fn.push_value(1);
@@ -524,27 +560,22 @@ int TaskScheduler::lua_task_defer(lua_State *L) {
             fn.error("cannot spawn a non-suspended thread (invalid argument #1)");
         }
     }
+    fn.push_value(1,1);
     fn.create_array_from_stack(nargs);
     fn.getregistry("TASK_await_defer");
     fn.push_value(2);
     fn.rawset(-2,fn.len(-2)+1);
     fn.pop_stack(2);
-    return 1;
+    return fn.lua_return(1);
 }
 int TaskScheduler::lua_task_delay(lua_State *L) {
     luau_function_context fn = L;
     fn.assert_type_argument(1,"functionOrThread", LUA_TFUNCTION, LUA_TTHREAD);
     fn.assert_type_argument(2,"delay", LUA_TNUMBER);
     fn.assert_stack_size_vararg(2);
-#ifndef NDEBUG
-    RBLX_PRINT_VERBOSE("task::delay");
-    fn.print_stack();
-#endif
     double delay = (double)fn.as_object(2);
     if (delay < 0) delay = 0;
     fn.push_object(delay + fn.clock(), 3);
-    RBLX_PRINT_VERBOSE("lua_task_delay: on stack pos 2 is_number = ",(fn.as_object(2).type == RBXVariant::Type::RBXVARIANT_NUM) ? "true" : "false");
-    RBLX_PRINT_VERBOSE("lua_task_delay: on stack pos 3 is_number = ",(fn.as_object(3).type == RBXVariant::Type::RBXVARIANT_NUM) ? "true" : "false");
     int nargs = fn.get_stack_size();
     bool isthread = false;
     if (fn.is_type(1, LUA_TFUNCTION)) {
@@ -559,7 +590,6 @@ int TaskScheduler::lua_task_delay(lua_State *L) {
         if (status != LUA_COSUS) {
             fn.error("cannot spawn a non-suspended thread (invalid argument #1)");
         }
-        fn.pop_stack(1);
     }
     fn.push_value(1, 1); // copy thread into position 1 to return it
     fn.create_array_from_stack(nargs);
@@ -567,7 +597,7 @@ int TaskScheduler::lua_task_delay(lua_State *L) {
     fn.push_value(2); // pushes the new array
     fn.rawset(-2,fn.len(-2)+1);
     fn.pop_stack(2);
-    return 1; // returns thread
+    return fn.lua_return(1); // returns thread
 }
 int TaskScheduler::lua_task_synchronize(lua_State *L) {
     return 0; // TODO: Implement desync/sync mode.
@@ -584,15 +614,11 @@ int TaskScheduler::lua_task_cancel(lua_State *L) {
     if (status == LUA_COSUS) {
         lua_resetthread(fn.as_thread(1));
     }
-    return 0;
+    return fn.lua_return(0);
 }
 int TaskScheduler::lua_task_wait(lua_State *L) {
     luau_function_context fn = L;
     fn.assert_stack_size(0,1);
-#ifndef NDEBUG
-    RBLX_PRINT_VERBOSE("task::delay");
-    fn.print_stack();
-#endif
     double delay = 0;
     if (fn.get_stack_size() == 1) {
         fn.assert_type_argument(1,"delay", LUA_TNUMBER);
@@ -606,7 +632,7 @@ int TaskScheduler::lua_task_wait(lua_State *L) {
     fn.push_value(1);
     fn.rawset(-2,fn.len(-2)+1);
     fn.yield(0);
-    return 0;
+    return fn.lua_return(1);
 }
 bool TaskScheduler::resume_cycle(lua_State *L) {
     luau_context ctx = L;
@@ -614,7 +640,7 @@ bool TaskScheduler::resume_cycle(lua_State *L) {
     // TODO: Implement deprecated stuff
     // {thread, funcargs...}
     ctx.getregistry("TASK_await_defer");
-    ctx.clone_table();
+    ctx.new_table();
     ctx.setregistry("TASK_await_defer"); // put new table in it
     iter = 0;
     while (true) {
@@ -622,16 +648,14 @@ bool TaskScheduler::resume_cycle(lua_State *L) {
         iter = ctx.rawiter(-1,iter);
         if (iter == -1) break;
         int nargs = ctx.push_vararg_array_and_pop(-1);
-        RBLX_PRINT_VERBOSE("task::resume defer iter=",iter," nargs=",nargs);
         ctx.push_value(-nargs);
-        if (ctx.costatus() == LUA_COSUS) ctx.resume(nargs-1,0,0);
+        if (ctx.costatus() == LUA_COSUS) ctx.resume(nargs-1,0);
     }
     ctx.pop_stack(1);
-    RBLX_PRINT_VERBOSE("task::resume defer done stack=",ctx.get_stack_size());
-
+    
     // {thread, delay, time+delay, funcargs...}
     ctx.getregistry("TASK_await_delay");
-    ctx.clone_table();
+    ctx.new_table();
     ctx.setregistry("TASK_await_delay"); // put new table in it
     iter = 0;
     while (true) {
@@ -640,15 +664,14 @@ bool TaskScheduler::resume_cycle(lua_State *L) {
         if (iter == -1) break;
         ctx.rawget(-1, 3);
         double time = ctx.to_object();
-        RBLX_PRINT_VERBOSE("task::resume delay iter=",iter," start_in=",time-ctx.clock());
         if (time > ctx.clock()) {
             ctx.rawget(-1, 2);
             double time_to_wait = ctx.to_object();
             int nargs = ctx.push_vararg_array_and_pop(-1);
-            ctx.remove_stack(-nargs+2); // remove time
-            ctx.remove_stack(-nargs+2); // remove time_to_wait
+            ctx.remove_stack(-nargs+1); // remove time
+            ctx.remove_stack(-nargs+1); // remove time_to_wait
             ctx.push_value(-(nargs-2));
-            if (ctx.costatus() == LUA_COSUS) ctx.resume(nargs-3,0,0); // NOTE: I thought you had to supply how much it had to wait, nope!
+            if (ctx.costatus() == LUA_COSUS) ctx.resume(nargs-3,0); // NOTE: I thought you had to supply how much it had to wait, nope!
         } else {
             ctx.getregistry("TASK_await_delay");
             ctx.push_value(-3);
@@ -657,11 +680,10 @@ bool TaskScheduler::resume_cycle(lua_State *L) {
         }
     }
     ctx.pop_stack(1);
-    RBLX_PRINT_VERBOSE("task::resume delay done stack=",ctx.get_stack_size());
     
     // {thread, delay, time+delay}
     ctx.getregistry("TASK_await_wait");
-    ctx.clone_table();
+    ctx.new_table();
     ctx.setregistry("TASK_await_wait"); // put new table in it
     iter = 0;
     while (true) {
@@ -670,8 +692,7 @@ bool TaskScheduler::resume_cycle(lua_State *L) {
         if (iter == -1) break;
         ctx.rawget(-1, 3);
         double time = ctx.to_object();
-        RBLX_PRINT_VERBOSE("task::resume wait iter=",iter," resume_in=",time-ctx.clock());
-        if (time > ctx.clock()) {
+        if (ctx.clock() > time) {
             ctx.rawget(-1, 2);
             double time_to_wait = ctx.to_object();
             ctx.push_vararg_array_and_pop(-1);
@@ -679,7 +700,7 @@ bool TaskScheduler::resume_cycle(lua_State *L) {
             ctx.push_value(-1);
             if (ctx.costatus() == LUA_COSUS) {
                 ctx.push_object(ctx.clock() - time + time_to_wait);
-                ctx.resume(1, 0, 0); // NOTE: I thought you had to supply how much it had to wait, nope!
+                ctx.resume(1, 0); // NOTE: I thought you had to supply how much it had to wait, nope!
             }
         } else {
             ctx.getregistry("TASK_await_wait");
@@ -690,7 +711,6 @@ bool TaskScheduler::resume_cycle(lua_State *L) {
         //int nargs = ctx.push_vararg_array_and_pop(-1);
     }
     ctx.pop_stack(1);
-    RBLX_PRINT_VERBOSE("task::resume wait done stack=",ctx.get_stack_size());
 
     ctx.getregistry("TASK_await_defer");
     if (ctx.len(-1) > 0) return true;
@@ -710,17 +730,11 @@ bool TaskScheduler::resume_cycle(luau_State *L) {
         iter = ctx.rawiter(-1,iter);
         if (iter == -1) break;
         int nargs = ctx.push_vararg_array_and_pop(-1);
-        RBLX_PRINT_VERBOSE("task::resume defer iter=",iter," nargs=",nargs);
-#ifndef NDEBUG
-        RBLX_PRINT_VERBOSE("task::resume on defer");
-        for_loop_scope.print_stack();
-#endif
         ctx.push_value(-nargs);
-        if (ctx.costatus() == LUA_COSUS) ctx.resume(nargs-1,0,0);
+        if (ctx.costatus() == LUA_COSUS) ctx.resume(nargs-1,0);
     }
     ctx.pop_stack(1);
-    RBLX_PRINT_VERBOSE("task::resume defer done stack=",ctx.get_stack_size());
-
+    
     // {thread, delay, time+delay, funcargs...}
     ctx.getregistry("TASK_await_delay");
     ctx.new_table();
@@ -732,15 +746,14 @@ bool TaskScheduler::resume_cycle(luau_State *L) {
         if (iter == -1) break;
         ctx.rawget(-1, 3);
         double time = ctx.to_object();
-        RBLX_PRINT_VERBOSE("task::resume delay iter=",iter," start_in=",time-ctx.clock());
         if (time > ctx.clock()) {
             ctx.rawget(-1, 2);
             double time_to_wait = ctx.to_object();
             int nargs = ctx.push_vararg_array_and_pop(-1);
-            ctx.remove_stack(-nargs+2); // remove time
-            ctx.remove_stack(-nargs+2); // remove time_to_wait
+            ctx.remove_stack(-nargs+1); // remove time
+            ctx.remove_stack(-nargs+1); // remove time_to_wait
             ctx.push_value(-(nargs-2));
-            if (ctx.costatus() == LUA_COSUS) ctx.resume(nargs-3,0,0); // NOTE: I thought you had to supply how much it had to wait, nope!
+            if (ctx.costatus() == LUA_COSUS) ctx.resume(nargs-3,0); // NOTE: I thought you had to supply how much it had to wait, nope!
         } else {
             ctx.getregistry("TASK_await_delay");
             ctx.push_value(-3);
@@ -749,7 +762,6 @@ bool TaskScheduler::resume_cycle(luau_State *L) {
         }
     }
     ctx.pop_stack(1);
-    RBLX_PRINT_VERBOSE("task::resume delay done stack=",ctx.get_stack_size());
     
     // {thread, delay, time+delay}
     ctx.getregistry("TASK_await_wait");
@@ -762,8 +774,7 @@ bool TaskScheduler::resume_cycle(luau_State *L) {
         if (iter == -1) break;
         ctx.rawget(-1, 3);
         double time = ctx.to_object();
-        RBLX_PRINT_VERBOSE("task::resume wait iter=",iter," resume_in=",time-ctx.clock());
-        if (time > ctx.clock()) {
+        if (ctx.clock() > time) {
             ctx.rawget(-1, 2);
             double time_to_wait = ctx.to_object();
             ctx.push_vararg_array_and_pop(-1);
@@ -771,7 +782,7 @@ bool TaskScheduler::resume_cycle(luau_State *L) {
             ctx.push_value(-1);
             if (ctx.costatus() == LUA_COSUS) {
                 ctx.push_object(ctx.clock() - time + time_to_wait);
-                ctx.resume(1, 0, 0); // NOTE: I thought you had to supply how much it had to wait, nope!
+                ctx.resume(1, 0); // NOTE: I thought you had to supply how much it had to wait, nope!
             }
         } else {
             ctx.getregistry("TASK_await_wait");
@@ -782,11 +793,32 @@ bool TaskScheduler::resume_cycle(luau_State *L) {
         //int nargs = ctx.push_vararg_array_and_pop(-1);
     }
     ctx.pop_stack(1);
-    RBLX_PRINT_VERBOSE("task::resume wait done stack=",ctx.get_stack_size());
 
     ctx.getregistry("TASK_await_defer");
     if (ctx.len(-1) > 0) return true;
     return false;
+}
+int TaskScheduler::lua_task_error_handler(lua_State *L) {
+    luau_function_context fn = L;
+    fn.print_stack();
+    fn.push_object("%s: %s\n%s",1);
+    BaseScript* script = fn.get_attached_script();
+    fn.push_objects(Instance::GetFullName,script);
+    fn.call(1, 1);
+    fn.insert_into(2);
+    fn.getregistry("tostring");
+    fn.insert_into(-2);
+    fn.call(1, 1);
+    fn.getregistry("db_traceback");
+    fn.push_object(2);
+    fn.call(1, 1);
+    fn.getregistry("str_format");
+    fn.insert_into(1);
+    fn.call(4, 1);
+    fn.getregistry("LOG_ERR_F");
+    fn.insert_into(-2);
+    fn.call(1, 0);
+    return 0;
 }
 
 }

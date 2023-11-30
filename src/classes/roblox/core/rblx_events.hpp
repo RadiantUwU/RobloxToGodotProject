@@ -51,14 +51,14 @@ public:
     template <typename... Args>
     void Fire(Args... args) {
         luau_context ctx = L;
-        ctx.push_objects(&TaskScheduler::lua_task_defer, &lua_fire);
-        int nargs = ctx.push_objects(args...)+1;
+        ctx.push_objects(&TaskScheduler::lua_task_defer);
+        int nargs = ctx.push_objects(&lua_fire, this, args...);
         ctx.call(nargs, 0);
     }
     void Fire() {
         luau_context ctx = L;
-        ctx.push_objects(&TaskScheduler::lua_task_defer, &lua_fire);
-        ctx.call(1, 0);
+        ctx.push_objects(&TaskScheduler::lua_task_defer, &lua_fire, this);
+        ctx.call(2, 0);
     }
 };
 

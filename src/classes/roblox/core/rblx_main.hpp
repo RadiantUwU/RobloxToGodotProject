@@ -9,6 +9,7 @@
 #include <godot_cpp/variant/utility_functions.hpp>
 #include <lua.h>
 #include <lualib.h>
+#include <assert.h>
 #include <mutex>
 #include "rblx_debug.hpp"
 #include "rblx_basic_types.hpp"
@@ -47,16 +48,9 @@ class luau_State final {
     Vector<int> tables_in_conversion;
     friend class LuaObject;
     friend class luau_context;
+    lua_CFunction errhandle = nullptr;
 public:
-    luau_State(RobloxVMInstance *VM, lua_State *state) {
-        L = state;
-        ::lua_pushlightuserdata(L, this);
-        ::lua_rawsetfield(L, LUA_REGISTRYINDEX, "LUAU_STATE");
-        ::lua_newtable(L);
-        ::lua_rawsetfield(L, LUA_REGISTRYINDEX, "USERDATA_METATABLES");
-        ::lua_pushlightuserdata(L, VM);
-        ::lua_rawsetfield(L, LUA_REGISTRYINDEX, "ROBLOX_VM");
-    }
+    luau_State(RobloxVMInstance *VM, lua_State *state);
     luau_State(RobloxVMInstance *vm);
     ~luau_State();
 
@@ -66,6 +60,17 @@ public:
 };
 
 class luau_context { // middle level abstraction
+private:
+    static int thr_pcall(lua_State *L) {
+        luau_context ctx = L;
+        int r = ctx.pcall(ctx.get_stack_size()-2,LUA_MULTRET,1);
+        if (r != ctx.get_stack_size()-1) {
+            lua_error(L);
+            return 0;
+        }
+        lua_remove(L, 1);
+        return r;
+    }
 protected:
     lua_State *L;
     luau_State *ls;
@@ -240,7 +245,7 @@ public:
     RBXVariant as_object(int idx);
     RBLX_INLINE lua_State* as_thread(int idx = -1) {return ::lua_tothread(L, idx); }
     RBLX_INLINE lua_CFunction as_cfunc(int idx = -1) {return ::lua_tocfunction(L, idx); }
-    RBLX_INLINE int as_absolute_stack_index(int idx = -1) {return (idx > 0) ? idx : ::lua_gettop(L)+1+idx;}
+    RBLX_INLINE int as_absolute_stack_index(int idx = -1) const {return (idx > 0) ? idx : ::lua_gettop(L)+1+idx;}
     RBLX_INLINE void push_pointer_hash(int idx) { ::lua_pushinteger(L, (size_t)::lua_topointer(L, idx)); }
     RBLX_INLINE int64_t as_pointer_hash(int idx) { return (size_t)::lua_topointer(L, idx); }
 
@@ -291,6 +296,14 @@ public:
     template <typename T>
     RBLX_INLINE T* as_userdata(int idx, int utype) { //safe
         return (T*)::lua_touserdatatagged(L, idx, utype);
+    }
+    template <typename T>
+    RBLX_INLINE T& as_userdata_ref(int idx) {
+        return *(T*)::lua_touserdata(L, idx);
+    }
+    template <typename T>
+    RBLX_INLINE T& as_userdata_ref(int idx, int utype) {
+        return *(T*)::lua_touserdatatagged(L, idx, utype);
     }
     RBLX_INLINE void set_dtor(int tag, lua_Destructor dtor) { ::lua_setuserdatadtor(L, tag, dtor); }
     RBLX_INLINE void setmetatable(int object_idx) {
@@ -367,7 +380,7 @@ public:
 
     RBLX_INLINE void pop_stack(int n) { lua_pop(L, n); }
     RBLX_INLINE void remove_stack(int idx) { lua_remove(L, idx); }
-    RBLX_INLINE int get_stack_size() { return lua_gettop(L); }
+    RBLX_INLINE int get_stack_size() const { return lua_gettop(L); }
     RBLX_INLINE void push_value(int idx) { lua_pushvalue(L, idx); }
     RBLX_INLINE void push_value(int idx, int idxdest) { lua_pushvalue(L, idx); lua_insert(L, idxdest); }
     RBLX_INLINE void clear_stack() { 
@@ -430,21 +443,7 @@ public:
             ::lua_rawset(L, -3);
         }
     }
-    RBLX_INLINE void clear_table(int tbl_idx = -1) {
-        tbl_idx = as_absolute_stack_index(tbl_idx);
-        clone_table(tbl_idx);
-        int iter = 0;
-        while (true) {
-            iter = rawiter(-1, iter);
-            if (iter == -1) {
-                ::lua_pop(L, 1);
-                return;
-            }
-            ::lua_pop(L, 1);
-            ::lua_pushnil(L);
-            ::lua_rawset(L, tbl_idx);
-        }
-    }
+    RBLX_INLINE void clear_table(int tbl_idx = -1) { ::lua_cleartable(L, tbl_idx); }
 
     RBLX_INLINE int getglobal(const char* name) { return lua_rawgetfield(L, LUA_GLOBALSINDEX, name); }
     RBLX_INLINE void setglobal(const char* name) { lua_rawsetfield(L, LUA_GLOBALSINDEX, name); }
@@ -479,32 +478,24 @@ public:
     RBLX_INLINE void yield(int nargs) {
         lua_yield(L, nargs);
     }
-    // MAIN: [...], [errfunc], [...], [coro], [args] -> [...], [errfunc], [...], [res]
+    // MAIN: [...], [coro], [args] -> [...], [res]
     // CORO: [...] -> [...]
-    // CASE OF ERROR:
-    // CORO: [...] -> [...], [error]
-    // if handler exists:
-    //   MAIN: [...], [errfunc], [...], [coro], [args] -> [...], [errfunc], [...]
-    // else
-    //   MAIN: [...], [coro], [args] -> [...], [error]
-    int resume(int nargs, int nres, int errfuncidx) {
+    int resume(int nargs, int nres) {
         int stack_size = lua_gettop(L)-nargs;
         int retnres;
         lua_State* thr = lua_tothread(L, -1-nargs);
-        if (thr == nullptr) this->errorf("Internal error: expected thread at position %d, got a non-thread object/null.",-1-nargs);
+        if (thr == nullptr) errorf("Internal error: expected thread at position %d(%d), got a non-thread object/null.",-1-nargs,as_absolute_stack_index(-1-nargs));
         lua_xmove(L, thr, nargs);
-        int status = lua_resume(thr, L, nargs);
-        retnres = lua_gettop(thr);
-        errfuncidx = (errfuncidx < 0 && !lua_ispseudo(errfuncidx)) ? errfuncidx+nargs : errfuncidx;
-        if (status != LUA_OK and status != LUA_YIELD) {
-            if (errfuncidx != 0) {
-                lua_xpush(L, thr, errfuncidx);
-                lua_pushvalue(thr, -2);
-                lua_call(thr, 1, 1);
-                lua_pop(L, 1); // pop the thread off
-            }
+        int status;
+        if (ls->errhandle != nullptr) {
+            status = lua_resume(thr, L, nargs+2);
         } else {
-            lua_pop(L, 1); // pop the thread off
+            status = lua_resume(thr, L, nargs);
+        }
+        
+        retnres = lua_gettop(thr);
+        lua_pop(L, 1); // pop the thread off
+        if (status == LUA_OK or status == LUA_YIELD) {
             lua_xmove(thr, L, retnres);
             if (nres > retnres) {
                 for (int i = 0; i < nres-retnres; i++) {
@@ -519,6 +510,10 @@ public:
     // [...], [Function], [nargs] -> [...], [thread]
     RBLX_INLINE lua_State* new_thread(int nargs) { 
         lua_State* thr = lua_newthread(L);
+        if (ls->errhandle != nullptr) {
+            lua_pushcfunction(thr, luau_context::thr_pcall, "luau_context::thr_pcall");
+            lua_pushcfunction(thr, ls->errhandle, "luau_state::errhandle");
+        }
         insert_into(-2-nargs);
         lua_xmove(L, thr, 1+nargs);
         return thr; // if they wanna use it anyways, its on stack
@@ -526,6 +521,10 @@ public:
     // [...], [Function], [nargs] -> [...], [thread]
     RBLX_INLINE lua_State* new_thread(int nargs, BaseScript* attached_script) { 
         lua_State* thr = lua_newthread(L);
+        if (ls->errhandle != nullptr) {
+            lua_pushcfunction(thr, luau_context::thr_pcall, "luau_context::thr_pcall");
+            lua_pushcfunction(thr, ls->errhandle, "luau_state::errhandle");
+        }
         insert_into(-2-nargs);
         lua_xmove(L, thr, 1+nargs);
         lua_setthreaddata(thr, attached_script);
@@ -648,9 +647,9 @@ private:
             }
         } else {
             bool began = true;
-            std::cout << "[ ... ";
+            std::cout << "[ ..., ";
             int stk_size = get_stack_size();
-            for (int i = stk_size; i > last_stack_size; i--) {
+            for (int i = stk_size-n; i <= stk_size; i++) {
                 if (!began) std::cout<<", ";
                 if (is_type(-i, LUA_TTABLE)) {
                     std::cout << "{ len: " << len(i) << " }";
@@ -696,6 +695,12 @@ public:
     }
     luau_function_context(luau_State *L, lua_State *thr) : luau_context(L,thr) {
         dont_clear_stack();
+    }
+    int lua_return(int nargs) const {
+#ifndef NDEBUG
+        assert(nargs <= get_stack_size());
+#endif
+        return nargs;
     }
 };
 
@@ -899,6 +904,8 @@ public:
     static int lua_task_synchronize(lua_State *L);
     static int lua_task_wait(lua_State *L);
     static int lua_task_cancel(lua_State *L);
+
+    static int lua_task_error_handler(lua_State *L);
 
     bool resume_cycle(lua_State *L);
     bool resume_cycle(luau_State *L);

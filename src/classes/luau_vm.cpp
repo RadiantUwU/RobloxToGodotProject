@@ -115,6 +115,8 @@ void LuauVM::create_metatables() {
 
     ::lua_pushcfunction(L, metatable_object__eq, NULL);
     ::lua_rawsetfield(L, -2, "__eq");
+
+    ::lua_pop(L, 1);
 }
 
 
@@ -215,10 +217,6 @@ void LuauVM::open_all_libraries() {
         ::lua_pushstring(L, lib->name);
         ::lua_call(L, 1, 0);
     }
-    ::lua_rawgetfield(L, LUA_GLOBALSINDEX, "os");
-    ::lua_rawgetfield(L, -1, "clock");
-    ::lua_remove(L, -2);
-    ::lua_rawsetfield(L, LUA_REGISTRYINDEX, "OS_CLOCK");
 }
 
 
@@ -244,11 +242,19 @@ int LuauVM::do_string(const String &code, const String &chunkname) {
     int status = load_string(code, chunkname);
     if (status != LUA_OK)
         return status;
-    status = lua_pcall(L, 0, LUA_MULTRET, 0);
+#ifndef NDEBUG
+    luau_context ctx = vm->main_synchronized;
+    ctx.print_stack();
+    ctx.print_stack_absolute();
+#endif
+    status = lua_pcall(L, 0, 0, 0);
+#ifndef NDEBUG
+    ctx.print_stack();
+    ctx.print_stack_absolute();
+#endif
     TaskScheduler* sched = vm->task;
     while (sched->resume_cycle(vm->main_synchronized)) {}
 #ifndef NDEBUG
-    luau_context ctx = vm->main_synchronized;
     ctx.print_stack();
     ctx.print_stack_absolute();
 #endif

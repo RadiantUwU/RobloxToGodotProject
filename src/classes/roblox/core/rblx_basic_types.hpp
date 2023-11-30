@@ -87,10 +87,22 @@ struct LuaString {
         return strcmp(s, this->s) == 0;
     }
     bool operator==(const LuaString& o) const {
-        return o.l==l and memcmp(o.s, s, l);
+        return o.l==l and memcmp(o.s, s, l) == 0;
     }
     bool operator==(const LuaString&& o) const {
-        return o.l==l and memcmp(o.s, s, l);
+        return o.l==l and memcmp(o.s, s, l) == 0;
+    }
+    bool operator!=(std::nullptr_t) const {
+        return s != nullptr;
+    }
+    bool operator!=(const char* s) const {
+        return strcmp(s, this->s) != 0;
+    }
+    bool operator!=(const LuaString& o) const {
+        return o.l!=l or memcmp(o.s, s, l) != 0;
+    }
+    bool operator!=(const LuaString&& o) const {
+        return o.l!=l or memcmp(o.s, s, l) != 0;
     }
 };
 

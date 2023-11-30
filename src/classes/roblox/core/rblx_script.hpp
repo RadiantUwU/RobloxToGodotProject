@@ -19,10 +19,10 @@ public:
 };
 
 enum RBLX_RunContext {
-    Legacy,
-    Server,
-    Plugin,
-    Client
+    RunContext_Legacy,
+    RunContext_Server,
+    RunContext_Plugin,
+    RunContext_Client
 };
 
 class BaseScript : public LuaSourceContainer {
