@@ -19,16 +19,16 @@ int Instance::new_instance(lua_State *L) {
     RBLX_PRINT_VERBOSE((void*)vm);
     if (s == "Instance") {// TODO: illegal on roblox lmaooo
         fn.new_instance<Instance>(vm);
-        return 1;
+        return fn.lua_return(1);
     } else if (s == "Script") {
         fn.new_instance<Script>(vm);
-        return 1;
+        return fn.lua_return(1);
     } else if (s == "LocalScript") {
         fn.new_instance<LocalScript>(vm);
-        return 1;
+        return fn.lua_return(1);
     }
     fn.errorf("Invalid class name provided to ClassName '%s'",s.s);
-    return 0;
+    return fn.lua_return(0);
 }
 
 }

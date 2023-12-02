@@ -488,7 +488,7 @@ void RobloxVMInstance::register_registry(lua_State *L) {
     ctx.setregistry("tonumber");
 }
 RobloxVMInstance::RobloxVMInstance(lua_State *main) {
-    main_synchronized = new(memalloc(sizeof(luau_State))) luau_State(this, main);;
+    main_synchronized = new(memalloc(sizeof(luau_State))) luau_State(this, main);
     task = new(memalloc(sizeof(TaskScheduler))) TaskScheduler(this);
     new(main_synchronized) luau_State(this, main);
     register_types(main);
