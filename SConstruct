@@ -19,9 +19,9 @@ lua_env.Append(CPPDEFINES = ["MAKE_LIB"])
 lua_env.Append(CXXFLAGS = ["-std=c++17"])
 lua_env.Append(CFLAGS = ["-std=c99"])
 
+module_env.Append(CXXFLAGS = ["-Wno-non-pod-varargs"])
 
-
-cpp_paths = [Dir("src").abspath, Dir("/").abspath]
+cpp_paths = [Dir("src").abspath, Dir("/").abspath, Dir("src/classes/roblox").abspath]
 lua_cpp_paths = []
 
 luau_paths = [
@@ -45,7 +45,7 @@ module_env.Append(CPPPATH=cpp_paths)
 
 
 lua_sources = []
-for path in luau_include_paths:
+for path in luau_include_paths: 
     lua_sources.extend(Glob(path + "/*.hpp"))
     lua_sources.extend(Glob(path + "/*.h"))
     lua_sources.extend(Glob(path + "/*.cpp"))
@@ -67,6 +67,7 @@ module_env.Append(LIBS=[library_name])
 sources = Glob("*.cpp")
 sources.append(Glob("src/*.cpp"))
 sources.append(Glob("src/classes/*.cpp"))
+sources.append(Glob("src/classes/roblox/core/*.cpp"))
 
 
 env["suffix"] = env["suffix"].replace(".dev", "").replace(".double", "").replace(".simulator", "")
