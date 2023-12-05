@@ -800,7 +800,9 @@ bool TaskScheduler::resume_cycle(luau_State *L) {
 }
 int TaskScheduler::lua_task_error_handler(lua_State *L) {
     luau_function_context fn = L;
+#ifndef NDEBUG
     fn.print_stack();
+#endif
     fn.push_object("%s: %s\n%s",1);
     BaseScript* script = fn.get_attached_script();
     fn.push_objects(Instance::GetFullName,script);
