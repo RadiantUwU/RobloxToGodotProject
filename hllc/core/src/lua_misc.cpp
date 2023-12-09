@@ -1,4 +1,4 @@
-#include <hllc/core/include/lua_misc.hpp>
+#include <lua_misc.hpp>
 #include <functional>
 #include <lua.h>
 #include <type_traits>

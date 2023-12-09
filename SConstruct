@@ -58,7 +58,7 @@ hllc_cpp_paths.extend(hllc_source_paths)
 
 lua_env.AppendUnique(CPPPATH=lua_cpp_paths, delete_existing=True)
 module_env.Append(CPPPATH=cpp_paths)
-hllc_env.Append(CPPPATH=hllc_cpp_paths)
+hllc_env.Append(CPPPATH=hllc_cpp_paths, delete_existing=True)
 
 lua_sources = []
 for path in luau_include_paths: 
@@ -93,7 +93,7 @@ hllc_env.Default(luau_library)
 hllc_library_name = "RobloxToGodotProject_hllc{}{}".format(env['suffix'], env["LIBSUFFIX"])
 hllc_library = hllc_env.StaticLibrary("bin/{}".format(hllc_library_name), source=hllc_sources)
 
-module_env.Default(luau_library,hllc_library_name)
+module_env.Default(luau_library,hllc_library)
 module_env.Append(LIBPATH=[Dir("bin").abspath])
 module_env.Append(LIBS=[luau_library_name,hllc_library_name])
 
