@@ -5,6 +5,7 @@
 #include "string.hpp"
 #include <lualib.h>
 #include "lua_misc.hpp"
+#include <memory>
 #include <mutex>
 #include <type_traits>
 
@@ -111,13 +112,17 @@ namespace HLLC::_LLC {
         template <typename T>
         HLLC_INLINE void register_type(size_t id, String name) {
             assert_msg(has_vm(),"Luau VM not assigned to low level luau state.");
-            type_refs[id] = lua_ref(L, -1);
+            type_refs[id] = lua_ref(main, -1);
             type_hashes[typeid(T).hash_code()] = id;
             type_ids[id] = name;
             lua_Destructor destructor;
             if (has_lua_destructor<T>) {
                 destructor = [](lua_State *L,void* ud){(T*)ud->lua_destroy(L);};
+            } else {
+                destructor = [](lua_State *L, void* ud){std::destroy_at((T*)ud);}
             }
+            lua_setuserdatadtor(main, id, destructor);
+            
         }
         template <typename T>
         HLLC_INLINE bool is_type_registered() {
