@@ -20,7 +20,7 @@ elif lua_env["platform"] == "ios":
 lua_env.Append(CPPDEFINES = ["MAKE_LIB"])
 lua_env.Append(CXXFLAGS = ["-std=c++17"])
 lua_env.Append(CFLAGS = ["-std=c99"])
-hllc_env.Append(CPPDEFINES = ["MAKE_LIB"])
+hllc_env.Append(CPPDEFINES = ["MAKE_LIB","USE_GODOT"])
 hllc_env.Append(CXXFLAGS = ["-std=c++20"])
 hllc_env.Append(CFLAGS = ["-std=c99"])
 

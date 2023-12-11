@@ -1,9 +1,51 @@
 #include <lua.h>
 #include <functional>
 #include "string.hpp"
+#include "defs.hpp"
 
 #ifndef HLLC_MISC
 #define HLLC_MISC
+
+#ifdef USE_GODOT
+#include <godot_cpp/core/error_macros.hpp>
+#ifdef DEBUG_ENABLED
+#define assert(m_cond)                                                                                                           \
+	if (unlikely(!(m_cond))) {                                                                                                   \
+		::godot::_err_print_error(FUNCTION_STR, __FILE__, __LINE__, "FATAL: assertion failed  \"" _STR(m_cond) "\" is false.");  \
+		::godot::_err_flush_stdout();                                                                                            \
+		GENERATE_TRAP();                                                                                                         \
+	} else                                                                                                                       \
+		((void)0)
+#define assert_msg(m_cond, m_msg)                                                                                                       \
+	if (unlikely(!(m_cond))) {                                                                                                          \
+		::godot::_err_print_error(FUNCTION_STR, __FILE__, __LINE__, "FATAL: assertion failed  \"" _STR(m_cond) "\" is false.", m_msg);  \
+		::godot::_err_flush_stdout();                                                                                                   \
+		GENERATE_TRAP();                                                                                                                \
+	} else                                                                                                                              \
+		((void)0)
+#else
+#define assert(m_cond)
+#endif
+#else
+#include <iostream>
+#ifndef DEBUG_ENABLED
+#define assert(m_cond)                                                                                                                               \
+	if (unlikely(!(m_cond))) {                                                                                                                       \
+		::std::cerr << FUNCTION_STR << ' ' << __FILE__ << ':' << __LINE__ << " FATAL: assertion failed  \"" _STR(m_cond) "\" is false." << ::std::endl; \
+		GENERATE_TRAP();                                                                                                                             \
+	} else                                                                                                                                           \
+		((void)0)
+#define assert_msg(m_cond, m_msg)                                                                                                                                     \
+	if (unlikely(!(m_cond))) {                                                                                                                                 \
+		::std::cerr << FUNCTION_STR << ' ' << __FILE__ << ':' << __LINE__ << " FATAL: assertion failed  \"" _STR(m_cond) "\" is false. " << m_msg << ::std::endl; \
+		GENERATE_TRAP();                                                                                                                                       \
+	} else                                                                                                                                                     \
+		((void)0)
+#else
+#define assert(m_cond)
+#define assert_msg(m_cond,m_msg)
+#endif
+#endif
 
 namespace HLLC::_LLC {
 
@@ -35,12 +77,17 @@ private:
     Type type;
     bool is_const = false;
     bool is_destructible = false;
+    bool has_initializer = false;
+    bool has_copy_constructor = false;
     bool unique_ptr = false;
+    size_t ptr_size = 0;
     size_t type_hash;
 #ifndef NDEBUG
     const char* type_name;
 #endif
-    std::function<void()> destructor;
+    std::function<void(void*,void*)> copy_constructor;
+    std::function<void(void*)> initializer;
+    std::function<void(void*)> destructor;
 union {
     LuaObjectWrapper obj;
     double number;
@@ -49,24 +96,26 @@ union {
     lua_CFunction cfunc;
 };
 public:
-    LuaVariantWrapper(const LuaObjectWrapper o);
+    LuaVariantWrapper(const LuaObjectWrapper o) : obj(o), type(TYPE_LUA_OBJECT) {};
     LuaVariantWrapper(const LuaVariantWrapper& v);
     LuaVariantWrapper(const double n) : number(n), type(TYPE_NUMBER) {}
     LuaVariantWrapper(const char* s) : str(s), type(TYPE_STRING) {}
     LuaVariantWrapper(const char* s, size_t l) : str(s,l), type(TYPE_STRING) {}
     LuaVariantWrapper(const String s) : str(s), type(TYPE_STRING) {}
     LuaVariantWrapper(std::nullptr_t) : type(TYPE_NIL) {}
+    LuaVariantWrapper() : type(TYPE_NIL) {}
     LuaVariantWrapper(lua_CFunction cf) : cfunc(cf), type(TYPE_CFUNC) {}
     template<typename T>
     LuaVariantWrapper(T* o);
     template<typename T>
     LuaVariantWrapper(const T* o);
     template<typename T>
-    LuaVariantWrapper(const T o);
+    LuaVariantWrapper(T o);
     ~LuaVariantWrapper();
 
     template<typename T>
     bool is_ud_type() const;
+    size_t get_type_hash() const {return type_hash;}
 #ifndef NDEBUG
     const char* get_ud_typename() const;
 #endif
@@ -76,23 +125,21 @@ public:
     template <typename T>
     T* cast_ud() const;
     template <typename T>
-    inline T cast();
+    inline T cast() const;
     template<>
-    inline double cast<>() {return number;}
+    inline double cast<>() const {return number;}
     template<>
-    inline const char* cast<>() {return str.s;}
+    inline const char* cast<>() const {return str.s;}
     template<>
-    inline String cast<>() {return str;}
+    inline String cast<>() const {return str;}
     template<>
-    inline LuaObjectWrapper cast<>() {return obj;}
+    inline LuaObjectWrapper cast<>() const {return obj;}
     template<>
-    inline std::nullptr_t cast<>() {return nullptr;}
+    inline std::nullptr_t cast<>() const {return nullptr;}
     template<>
-    inline lua_CFunction cast<>() {return cfunc;}
+    inline lua_CFunction cast<>() const {return cfunc;}
 };
 
-
-
-}
+} // namespace HLLC::_LLC
 
 #endif
