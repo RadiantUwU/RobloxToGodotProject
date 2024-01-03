@@ -25,6 +25,7 @@ class luau_context;
 class RBXScriptConnection;
 class RBXScriptSignal;
 class TaskScheduler;
+class RBXRenderingSystem;
 
 class LuaObject final {
     luau_State *ls;
@@ -1018,6 +1019,7 @@ public:
 
     //misc
     TaskScheduler* task;
+    RBXRenderingSystem* renderer;
     RBLX_VMRunContext context = RUNCTXT_NORMAL;
 
     LuaString open_script_asset(LuaString asset) {
