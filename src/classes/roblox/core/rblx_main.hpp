@@ -649,9 +649,9 @@ private:
             bool began = true;
             std::cout << "[ ..., ";
             int stk_size = get_stack_size();
-            for (int i = stk_size-n; i <= stk_size; i++) {
+            for (int i = n; i <= stk_size; i++) {
                 if (!began) std::cout<<", ";
-                if (is_type(-i, LUA_TTABLE)) {
+                if (is_type(i, LUA_TTABLE)) {
                     std::cout << "{ len: " << len(i) << " }";
                 } else {
                     std::cout << ((is_type(i, LUA_TUSERDATA)) ? get_usertypename(i) : get_typename(i));
@@ -664,7 +664,7 @@ private:
 public:
     RBLX_NOINLINE void print_stack() {
         if (last_stack_size == -1) print_stack_absolute();
-        else _print_stack(::lua_gettop(L)-last_stack_size);
+        else _print_stack(last_stack_size);
     }
     RBLX_NOINLINE void print_stack_absolute() {
         _print_stack();
@@ -865,6 +865,9 @@ public:
     operator void*() const {
         return ptr;
     }
+    operator LuaString() {
+        return LuaString(get_str(),get_slen());
+    }
     bool operator==(const RBXVariant& other) const {
         if ((other.type != type) and not ((other.type == Type::RBXVARIANT_INT or other.type == Type::RBXVARIANT_NUM) and (type == Type::RBXVARIANT_INT or type == Type::RBXVARIANT_NUM))) return false;
         switch (type) {
@@ -895,7 +898,7 @@ class TaskScheduler {
     RobloxVMInstance* vm;
     friend class RobloxVMInstance;
     TaskScheduler(RobloxVMInstance *vm);
-public:
+public: 
     ~TaskScheduler();
     static int lua_task_spawn(lua_State *L);
     static int lua_task_defer(lua_State *L);

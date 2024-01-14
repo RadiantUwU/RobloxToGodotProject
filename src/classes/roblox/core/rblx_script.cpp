@@ -132,11 +132,18 @@ void BaseScript::setEnable(bool enable, bool now) {
         }// TODO: Implement if actor exists
         luau_context ctx = L;
 
-        ctx.new_dictionary(2);
+        ctx.new_dictionary(3);
         ctx.push_object(this);
         ctx.rawset(-2,"script");
         ctx.getglobal("print");
         ctx.rawset(-2,"print");
+        ctx.push_value(LUA_GLOBALSINDEX);
+        ctx.rawset(-2, "_G");
+        ctx.new_dictionary(1);
+        ctx.push_value(LUA_GLOBALSINDEX);
+        ctx.rawset(-2,"__index");
+        ctx.setmetatable(-2);
+        //ctx.pop_stack(1);//unsafe
         ctx.push_value(-1);
         env_ref = ctx.new_ref(-1);
         add_ref(env_ref);
@@ -156,11 +163,11 @@ void BaseScript::setEnable(bool enable, bool now) {
         add_ref(connections_ref);
 
         before_start();
-        ctx.compile(Name,RuntimeSource,-1);
+        ctx.compile(Name,RuntimeSource,-2);
         ctx.new_thread(0, this);
 
         ctx.push_ref(threads_ref);
-        ctx.push_value(-1);
+        ctx.push_value(-2);
         ctx.push_object(true);
         ctx.rawset(-3);
         ctx.pop_stack(1);
