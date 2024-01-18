@@ -388,7 +388,9 @@ public:
         int64_t s = lua_gettop(L) - last_stack_size;
         if (s>0) {
             lua_pop(L, s);
+#ifdef RBLX_PRINT_STACK_CLEARS
             RBLX_PRINT_VERBOSE("popped ",s," values from clear_stack()");
+#endif
         }
     }
 

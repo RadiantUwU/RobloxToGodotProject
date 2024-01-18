@@ -2,6 +2,10 @@
 #define RBLX_DEBUG
 
 #ifndef NDEBUG
+//#define RBLX_PRINT_STACK_CLEARS //Prints whenever the luau_context clears the stack
+#endif
+
+#ifndef NDEBUG
 #define RBLX_INLINE
 #include <iostream>
 namespace godot {
