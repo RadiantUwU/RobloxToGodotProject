@@ -404,7 +404,7 @@ public:
     RBLX_INLINE void rawset(int tbl_idx) { lua_rawset(L, tbl_idx); }
     RBLX_INLINE void rawset(int tbl_idx, const char* field) { lua_rawsetfield(L, tbl_idx, field); }
     RBLX_INLINE void rawset(int tbl_idx, int64_t i) { lua_rawseti(L, tbl_idx, i); }
-    RBLX_INLINE int len(int idx) { return lua_objlen(L, idx); }
+    RBLX_INLINE int len(int idx) { return lua_objlen(L, idx); } // This operation does *NOT* pop from stack!
 
     RBLX_INLINE int rawiter(int idx, int iter) { return lua_rawiter(L, idx, iter); }
     RBLX_INLINE int next(int idx) { return lua_next(L, idx); }
@@ -475,8 +475,9 @@ public:
         lua_error(L);
     }
 
-    RBLX_INLINE void yield(int nargs) {
-        lua_yield(L, nargs);
+    // NOTE: This function returns -1 so that Luau actually knows it yielded!
+    RBLX_INLINE int yield(int nargs) {
+        return lua_yield(L, nargs);
     }
     // MAIN: [...], [coro], [args] -> [...], [res]
     // CORO: [...] -> [...]
@@ -486,13 +487,14 @@ public:
         lua_State* thr = lua_tothread(L, -1-nargs);
         if (thr == nullptr) errorf("Internal error: expected thread at position %d(%d), got a non-thread object/null.",-1-nargs,as_absolute_stack_index(-1-nargs));
         lua_xmove(L, thr, nargs);
-        int status;
-        if (ls->errhandle != nullptr) {
-            status = lua_resume(thr, L, nargs+2);
-        } else {
-            status = lua_resume(thr, L, nargs);
+#ifndef NDEBUG
+        {
+            luau_context ctx = thr;
+            RBLX_PRINT_VERBOSE("Resuming thread! Current stack: ");
+            ctx.print_stack_absolute();
         }
-        
+#endif
+        int status = lua_resume(thr, L, nargs);
         retnres = lua_gettop(thr);
         lua_pop(L, 1); // pop the thread off
         if (status == LUA_OK or status == LUA_YIELD) {
@@ -510,10 +512,6 @@ public:
     // [...], [Function], [nargs] -> [...], [thread]
     RBLX_INLINE lua_State* new_thread(int nargs) { 
         lua_State* thr = lua_newthread(L);
-        if (ls->errhandle != nullptr) {
-            lua_pushcfunction(thr, luau_context::thr_pcall, "luau_context::thr_pcall");
-            lua_pushcfunction(thr, ls->errhandle, "luau_state::errhandle");
-        }
         insert_into(-2-nargs);
         lua_xmove(L, thr, 1+nargs);
         return thr; // if they wanna use it anyways, its on stack
@@ -521,10 +519,6 @@ public:
     // [...], [Function], [nargs] -> [...], [thread]
     RBLX_INLINE lua_State* new_thread(int nargs, BaseScript* attached_script) { 
         lua_State* thr = lua_newthread(L);
-        if (ls->errhandle != nullptr) {
-            lua_pushcfunction(thr, luau_context::thr_pcall, "luau_context::thr_pcall");
-            lua_pushcfunction(thr, ls->errhandle, "luau_state::errhandle");
-        }
         insert_into(-2-nargs);
         lua_xmove(L, thr, 1+nargs);
         lua_setthreaddata(thr, attached_script);
@@ -553,7 +547,7 @@ public:
         if (thr != L and lua_mainthread(L) != thr) lua_resetthread(thr);
         lua_pop(L, 1);
     }
-    // [...], [thread] -> [...]
+    // [...] -> [...]
     RBLX_INLINE void close(lua_State *thr) {
         if (thr != L and lua_mainthread(L) != thr) lua_resetthread(thr);
     }
@@ -683,6 +677,21 @@ public:
     int compile(const char* fname, LuaString code, int env_idx = 0);
 
     RBLX_INLINE luau_State* get_luau_state() { return ls; }
+
+    RBLX_INLINE bool is_running() {auto s = lua_costatus(L, as_thread(-1)); pop_stack(-1); return s==LUA_COSUS || s==LUA_CORUN;}
+    RBLX_INLINE bool is_running(lua_State* thr) {auto s = lua_costatus(L, thr); return s==LUA_COSUS || s==LUA_CORUN;}
+
+    RBLX_INLINE bool ready_to_resume(lua_State* thr) {
+        auto costatus = lua_costatus(L, thr);
+        if (costatus==LUA_COSUS && lua_status(thr) == LUA_OK) { // suspended but not yielded
+            //check if a function is first argument
+            return lua_type(thr,1)==LUA_TFUNCTION;
+        } else return costatus==LUA_COSUS;
+    }
+    RBLX_INLINE bool ready_to_resume() {
+        lua_State *thr = as_thread(-1); pop_stack(-1);
+        return ready_to_resume(thr);
+    }
 };
 
 class luau_function_context : public luau_context {
@@ -898,20 +907,23 @@ class TaskScheduler {
     RobloxVMInstance* vm;
     friend class RobloxVMInstance;
     TaskScheduler(RobloxVMInstance *vm);
+protected:
+    void dispatch_thread(luau_context& ctx, size_t nargs);
 public: 
     ~TaskScheduler();
+    static int lua_task_error_handler(lua_State *L);
     static int lua_task_spawn(lua_State *L);
     static int lua_task_defer(lua_State *L);
     static int lua_task_delay(lua_State *L);
-    static int lua_task_desynchronize(lua_State *L);
-    static int lua_task_synchronize(lua_State *L);
+    static int lua_task_desynchronize(lua_State *L);// TODO: To be implemented...
+    static int lua_task_synchronize(lua_State *L);// TODO: To be implemented...
     static int lua_task_wait(lua_State *L);
     static int lua_task_cancel(lua_State *L);
 
-    static int lua_task_error_handler(lua_State *L);
+    bool dispatch(lua_State *L);
+    bool dispatch(luau_State *L);
 
-    bool resume_cycle(lua_State *L);
-    bool resume_cycle(luau_State *L);
+    bool dead(luau_State *L);
 };
 enum RBLX_VMRunContext {
     RUNCTXT_CORE,

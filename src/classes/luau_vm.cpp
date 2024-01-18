@@ -253,8 +253,12 @@ int LuauVM::do_string(const String &code, const String &chunkname) {
     ctx.print_stack_absolute();
 #endif
     TaskScheduler* sched = vm->task;
-    while (sched->resume_cycle(vm->main_synchronized)) {}
 #ifndef NDEBUG
+    while (!sched->dead(vm->main_synchronized)) {
+#endif
+    while (sched->dispatch(vm->main_synchronized)) {}
+#ifndef NDEBUG
+    }
     ctx.print_stack();
     ctx.print_stack_absolute();
 #endif

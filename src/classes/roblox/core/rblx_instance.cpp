@@ -36,18 +36,21 @@ Instance::Instance(RobloxVMInstance *VM) {
 }
 Instance::~Instance() {
     luau_context ls = this->VM->main_synchronized;
-    destroy_children();
+    //destroy_children(); // Causes C stack overflow from Luau running GC during destructor
+    //Note: This will delete the object without firing any events!
+    //TODO: Events will hold a reference to the instance.
     for (int ref : refs) {
         ls.delete_ref(ref);
     }
 }
 void Instance::destroy() {
-    if (parent != nullptr) {
+    if (parent != nullptr && !destroyed) {
         Destroying->Fire();
         destroy_children();
         parent_locked = false;
         setParent(nullptr);
         parent_locked = true;
+        destroyed = true;
     }
 }
 void Instance::destroy_children() {
@@ -552,7 +555,7 @@ int Instance::GetFullName(lua_State *L) {
     names.reverse();
     int size,nsize = 0;
     for (LuaString& n : names) {
-        size += n.l;
+        size += n.l+1;
     }
     nsize = names.size()-1;
     LuaString fullname((final_game) ? size+5 : size);

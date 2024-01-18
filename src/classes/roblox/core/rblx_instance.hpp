@@ -133,6 +133,7 @@ protected:
     LuaString Name;// Properties
     RobloxVMInstance *VM;
     bool parent_locked = false;
+    bool destroyed = false;
     void _clone_object(Instance*) const;
     virtual Instance* clone_object() const; // TODO: mark this as abstract
     virtual bool has_property(const LuaString& s, bool recurse = true) const;
