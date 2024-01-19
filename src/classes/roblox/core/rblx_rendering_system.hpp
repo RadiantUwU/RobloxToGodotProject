@@ -2,9 +2,11 @@
 #define RBLX_RENDERING_SYSTEM
 #include <godot_cpp/classes/rendering_server.hpp>
 #include <godot_cpp/classes/viewport.hpp>
+#include <godot_cpp/classes/environment.hpp>
 #include <godot_cpp/variant/rid.hpp>
 #include <godot_cpp/templates/vector.hpp>
 
+#include "rblx_basic_types.hpp"
 #include "rblx_main.hpp"
 
 namespace godot {
@@ -12,15 +14,16 @@ namespace godot {
 class RBXRenderingSystem {
     bool enabled = false;
     Vector<RID> rids;
+    HashMap<RID,bool> is_supposed_to_be_visible;
 protected:
-    RenderingServer* rendering_server;
     void add_rid(RID rid);
-    void delete_rid(RID rid);
-    Viewport* viewport;
-    RID old_space;
-    RID old_canvas;
-    RID new_space;
-    RID new_canvas;
+    void delete_rid(RID rid); // destroys too
+
+    RenderingServer* rendering_server;
+    RID scenario;//3D
+    RID canvas;//2D
+    RID environment;
+    RID workspace_instance;
 public:
     RBXRenderingSystem();
     ~RBXRenderingSystem();
