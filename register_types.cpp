@@ -6,7 +6,7 @@
 #include <godot_cpp/core/defs.hpp>
 #include <godot_cpp/godot.hpp>
 
-#include "src/classes/luau_vm.h"
+#include "src/classes/roblox_vm.h"
 // #include "src/classes/luau_error.h"
 // #include "src/classes/luau_function.h"
 
@@ -17,7 +17,7 @@ void initialize_RobloxToGodotProject_module(ModuleInitializationLevel p_level) {
 		return;
 	}
 	
-	ClassDB::register_class<LuauVM>();
+	ClassDB::register_class<RobloxVM>();
 	ClassDB::register_class<LuauFunction>();
 	ClassDB::register_class<LuauFunctionResult>();
 }

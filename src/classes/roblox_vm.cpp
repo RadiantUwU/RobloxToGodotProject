@@ -1,4 +1,4 @@
-#include <classes/luau_vm.h>
+#include <classes/roblox_vm.h>
 
 #include <cstdlib>
 #include <godot_cpp/variant/utility_functions.hpp>
@@ -12,13 +12,13 @@
 
 
 
-void lua_setnode(lua_State* L, godot::LuauVM* node) {
+void lua_setnode(lua_State* L, godot::RobloxVM* node) {
     lua_pushstring(L, RobloxToGodotProject_REGISTRY_NODE_KEY);
     lua_pushlightuserdata(L, node);
     lua_settable(L, LUA_REGISTRYINDEX);
 }
 
-godot::LuauVM* lua_getnode(lua_State* L) {
+godot::RobloxVM* lua_getnode(lua_State* L) {
     lua_pushstring(L, RobloxToGodotProject_REGISTRY_NODE_KEY);
     lua_gettable(L, LUA_REGISTRYINDEX);
     if (!lua_islightuserdata(L, -1)) {
@@ -27,7 +27,7 @@ godot::LuauVM* lua_getnode(lua_State* L) {
     }
     void *userdata = lua_tolightuserdata(L, -1);
     lua_pop(L, 1);
-    return reinterpret_cast<godot::LuauVM*>(userdata);
+    return reinterpret_cast<godot::RobloxVM*>(userdata);
 }
 
 using namespace godot;
@@ -66,7 +66,7 @@ static lua_CompileOptions luau_vm_compile_options = {
     // const char** mutableGlobals;
 };
 
-LuauVM::LuauVM() {
+RobloxVM::RobloxVM() {
     L = lua_newstate(lua_alloc, nullptr);
     lua_setnode(L, this);
     create_metatables();
@@ -75,17 +75,17 @@ LuauVM::LuauVM() {
     new (vm) RobloxVMInstance(L);
 }
 
-LuauVM::~LuauVM() {
+RobloxVM::~RobloxVM() {
     vm->~RobloxVMInstance();
     memfree(vm);
 }
 
-void LuauVM::_bind_methods() {
-    ClassDB::bind_method(D_METHOD("load_string", "code", "chunkname"), &LuauVM::load_string, DEFVAL("loadstring"));
-    ClassDB::bind_method(D_METHOD("do_string", "code", "chunkname"), &LuauVM::do_string, DEFVAL("dostring"));
+void RobloxVM::_bind_methods() {
+    ClassDB::bind_method(D_METHOD("load_string", "code", "chunkname"), &RobloxVM::load_string, DEFVAL("loadstring"));
+    ClassDB::bind_method(D_METHOD("do_string", "code", "chunkname"), &RobloxVM::do_string, DEFVAL("dostring"));
 
-    ClassDB::bind_method(D_METHOD("open_libraries", "libraries"), &LuauVM::open_libraries);
-    ClassDB::bind_method(D_METHOD("open_all_libraries"), &LuauVM::open_all_libraries);
+    ClassDB::bind_method(D_METHOD("open_libraries", "libraries"), &RobloxVM::open_libraries);
+    ClassDB::bind_method(D_METHOD("open_all_libraries"), &RobloxVM::open_all_libraries);
 
     _bind_passthrough_methods();
 
@@ -105,7 +105,7 @@ int metatable_object__eq(lua_State *L) {
     return 1;
 }
 
-void LuauVM::create_metatables() {
+void RobloxVM::create_metatables() {
     luaL_newmetatable("object");
     
     lua_setuserdatadtor(L, 1, object_userdata_dtor);
@@ -123,7 +123,7 @@ void LuauVM::create_metatables() {
 
 static int godot_print(lua_State* L) {
     int nargs = ::lua_gettop(L);
-    LuauVM *node = lua_getnode(L);
+    RobloxVM *node = lua_getnode(L);
 
     String s = String();
     for (int i = 1; i <= nargs; i++) {
@@ -197,7 +197,7 @@ static const luaL_Reg lualibs[] = {
 };
 
 
-void LuauVM::open_libraries(const Array &libraries) {
+void RobloxVM::open_libraries(const Array &libraries) {
     const luaL_Reg* lib = lualibs;
     for (; lib->func; lib++)
     {
@@ -209,7 +209,7 @@ void LuauVM::open_libraries(const Array &libraries) {
     }
 }
 
-void LuauVM::open_all_libraries() {
+void RobloxVM::open_all_libraries() {
     const luaL_Reg* lib = lualibs;
     for (; lib->func; lib++)
     {
@@ -220,12 +220,12 @@ void LuauVM::open_all_libraries() {
 }
 
 
-int64_t LuauVM::get_memory_usage_bytes() {
+int64_t RobloxVM::get_memory_usage_bytes() {
     return lua_gc(L, LUA_GCCOUNTB, 0) + 1024 * lua_gc(L, LUA_GCCOUNT, 0);;
 }
 
 
-int LuauVM::load_string(const String &code, const String &chunkname) {
+int RobloxVM::load_string(const String &code, const String &chunkname) {
     auto utf8 = code.ascii();
     auto source = utf8.get_data();
     size_t bytecode_size = 0;
@@ -238,7 +238,7 @@ int LuauVM::load_string(const String &code, const String &chunkname) {
     return status;
 }
 
-int LuauVM::do_string(const String &code, const String &chunkname) {
+int RobloxVM::do_string(const String &code, const String &chunkname) {
     int status = load_string(code, chunkname);
     if (status != LUA_OK)
         return status;
@@ -280,11 +280,11 @@ int LuauVM::do_string(const String &code, const String &chunkname) {
 */
 
 
-void LuauVM::handle_error(lua_State* thr) {
+void RobloxVM::handle_error(lua_State* thr) {
     //TODO: Print error
     ::lua_resetthread(thr);
 }
-void LuauVM::terminate_error(lua_State* thr) {
+void RobloxVM::terminate_error(lua_State* thr) {
     //TODO: Print error
     ::lua_resetthread(thr);
 }

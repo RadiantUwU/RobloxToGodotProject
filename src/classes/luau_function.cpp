@@ -2,7 +2,7 @@
 #include <classes/luau_function_result.h>
 #include <godot_cpp/variant/utility_functions.hpp>
 #include <utils.h>
-#include <classes/luau_vm.h>
+#include <classes/roblox_vm.h>
 
 
 

@@ -17,8 +17,8 @@
 
 namespace godot {
 
-class LuauVM : public Node {
-    GDCLASS(LuauVM, Node)
+class RobloxVM : public Node {
+    GDCLASS(RobloxVM, Node)
     RobloxVMInstance* vm;
 private:
     lua_State* L;
@@ -31,8 +31,8 @@ protected:
     static void _bind_passthrough_methods();
 
 public:
-    LuauVM();
-    ~LuauVM();
+    RobloxVM();
+    ~RobloxVM();
 
     void register_print();
 
@@ -98,8 +98,8 @@ public:
 };
 }
 
-void lua_setnode(lua_State* L, godot::LuauVM* node);
-godot::LuauVM* lua_getnode(lua_State* L);
+void lua_setnode(lua_State* L, godot::RobloxVM* node);
+godot::RobloxVM* lua_getnode(lua_State* L);
 
 VARIANT_ENUM_CAST(lua_Status);
 VARIANT_ENUM_CAST(lua_Type);

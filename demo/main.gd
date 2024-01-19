@@ -1,7 +1,7 @@
 extends Node
 
 
-@onready var vm : LuauVM = $LuauVM
+@onready var vm : RobloxVM = $RobloxVM
 
 func _ready():
 	print("================")
