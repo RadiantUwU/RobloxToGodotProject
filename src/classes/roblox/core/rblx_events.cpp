@@ -9,19 +9,19 @@
 namespace godot {
 
 RBXScriptSignal::RBXScriptSignal(lua_State *L) {
-    luau_context ls = luau_context(L);
+    low_level_luau_context ls = low_level_luau_context(L);
     ls.new_table();
     ref = ls.new_ref(-1);
     this->L = L;
 }
 RBXScriptSignal::RBXScriptSignal(luau_State *L) {
-    luau_context lc = luau_context(L);
+    low_level_luau_context lc = low_level_luau_context(L);
     lc.new_table();
     ref = lc.new_ref(-1);
     this->L = L->get_state();
 }
 RBXScriptSignal::~RBXScriptSignal() {
-    luau_context lc = luau_context(L);
+    low_level_luau_context lc = low_level_luau_context(L);
     lc.delete_ref(ref);
 }
 int RBXScriptSignal::lua_connect(lua_State *L) {
@@ -86,7 +86,7 @@ int RBXScriptSignal::lua_fire(lua_State *L) {
     fn.clone_table();
     int k = 0;
     while (true) {
-        luau_context iter = L;
+        low_level_luau_context iter = L;
         k = iter.rawiter(-1, k);
         if (k == -1) break;
         for (int i = 0; i < args; i++) 
@@ -166,12 +166,12 @@ void RBXScriptSignal::lua_destroy(lua_State *L, void *ud) {
 }
 
 bool RBXScriptConnection::isConnected() {
-    luau_context ls = signal->L;
+    low_level_luau_context ls = signal->L;
     ls.push_ref(signal->ref);
     return ls.rawget(-1,ref) != LUA_TNIL;
 }
 void RBXScriptConnection::Disconnect() {
-    luau_context ls = signal->L;
+    low_level_luau_context ls = signal->L;
     ls.push_ref(signal->ref);
     ls.push_object();
     ls.rawset(-2,ref);

@@ -14,7 +14,7 @@ namespace godot {
 Instance::Instance(RobloxVMInstance *VM) {
     this->VM = VM;
     luau_State *L = VM->main_synchronized;
-    luau_context ls = VM->main_synchronized;
+    low_level_luau_context ls = VM->main_synchronized;
     AncestryChanged = ls.new_userdata<RBXScriptSignal>(ls.UD_TRBXSCRIPTSIGNAL, L);
     RBLX_PRINT_VERBOSE("UTYPE: ",ls.get_userdata_type(-1));
     RBLX_PRINT_VERBOSE("expected: ",ls.UD_TRBXSCRIPTSIGNAL);
@@ -35,7 +35,7 @@ Instance::Instance(RobloxVMInstance *VM) {
     refs.append(ls.new_ref(-1));
 }
 Instance::~Instance() {
-    luau_context ls = this->VM->main_synchronized;
+    low_level_luau_context ls = this->VM->main_synchronized;
     //destroy_children(); // Causes C stack overflow from Luau running GC during destructor
     //Note: This will delete the object without firing any events!
     //TODO: Events will hold a reference to the instance.
@@ -80,7 +80,7 @@ void Instance::setParent(Instance *newparent) {
     if (parent) {
         RBLX_PRINT_VERBOSE("Starting recursion through parent's references table");
         for (int64_t ref : parent->refs) {
-            luau_context ctx = VM->main_synchronized;
+            low_level_luau_context ctx = VM->main_synchronized;
             ctx.push_ref(ref);
             if (ctx.as_userdata<Instance>(-1) == this) {
                 RBLX_PRINT_VERBOSE("Found reference of old parent: ", ref);
@@ -98,7 +98,7 @@ void Instance::setParent(Instance *newparent) {
     if (newparent) {
         parent->children.append(this);
         RBLX_PRINT_VERBOSE("Creating new reference of parent...");
-        luau_context ctx = VM->main_synchronized;
+        low_level_luau_context ctx = VM->main_synchronized;
         ctx.rawget(LUA_REGISTRYINDEX,"USERDATA_REFS");
         ctx.rawget(-1,(size_t)(void*)this);
         parent->refs.append(ctx.new_ref(-1));
@@ -142,14 +142,14 @@ void Instance::setName(LuaString n) {
     }
 }
 int64_t Instance::add_ref(Instance *i) {
-    luau_context ctx = this->VM->main_synchronized;
+    low_level_luau_context ctx = this->VM->main_synchronized;
     ctx.push_object(i);
     int64_t ref = ctx.new_ref(-1);
     refs.append(ref);
     return ref;
 }
 int64_t Instance::add_ref(RBXScriptSignal *s) {
-    luau_context ctx = this->VM->main_synchronized;
+    low_level_luau_context ctx = this->VM->main_synchronized;
     ctx.push_object(s);
     int64_t ref = ctx.new_ref(-1);
     refs.append(ref);
@@ -160,7 +160,7 @@ void Instance::add_ref(int64_t ref) {
 }
 bool Instance::has_ref(Instance* i) {
     for (int64_t ref : refs) {
-        luau_context ctx = VM->main_synchronized;
+        low_level_luau_context ctx = VM->main_synchronized;
         ctx.push_ref(ref);
         if (ctx.as_userdata<Instance>(-1) == i) {
             return true;
@@ -170,7 +170,7 @@ bool Instance::has_ref(Instance* i) {
 }
 bool Instance::has_ref(RBXScriptSignal* s) {
     for (int64_t ref : refs) {
-        luau_context ctx = VM->main_synchronized;
+        low_level_luau_context ctx = VM->main_synchronized;
         ctx.push_ref(ref);
         if (ctx.as_userdata<RBXScriptSignal>(-1) == s) {
             return true;
@@ -183,7 +183,7 @@ bool Instance::has_ref(int64_t ref) {
 }
 void Instance::remove_ref(Instance* i) {
     for (int64_t ref : refs) {
-        luau_context ctx = VM->main_synchronized;
+        low_level_luau_context ctx = VM->main_synchronized;
         ctx.push_ref(ref);
         if (ctx.as_userdata<Instance>(-1) == i) {
             ctx.delete_ref(ref);
@@ -194,7 +194,7 @@ void Instance::remove_ref(Instance* i) {
 }
 void Instance::remove_ref(RBXScriptSignal* s) {
     for (int64_t ref : refs) {
-        luau_context ctx = VM->main_synchronized;
+        low_level_luau_context ctx = VM->main_synchronized;
         ctx.push_ref(ref);
         if (ctx.as_userdata<RBXScriptSignal>(-1) == s) {
             ctx.delete_ref(ref);
@@ -221,7 +221,7 @@ bool Instance::has_property(const LuaString& s, bool recurse) const {
 }
 
 Instance *Instance::clone_object() const {
-    luau_context ctx = VM->main_synchronized;
+    low_level_luau_context ctx = VM->main_synchronized;
     //TODO: Add defer reference
     //TODO: Associate to actor
     Instance* i = ctx.new_instance<Instance>(VM);
@@ -243,7 +243,7 @@ int Instance::AddTag(lua_State *L) {
     LuaString tag = LuaString(v.get_str(),v.get_slen());
     if (!i->tags.has(tag)) {
         i->tags.insert(tag);
-        luau_context ctx = i->VM->main_synchronized;
+        low_level_luau_context ctx = i->VM->main_synchronized;
         ctx.getregistry("INSTANCE_TAGS");
         ctx.push_object(tag);
         ctx.rawget(-2);
@@ -335,7 +335,7 @@ int Instance::FindFirstAncestorWhichIsA(lua_State *L) {
     LuaString n = LuaString(v.get_str(),v.get_slen());
     Instance* ancestor = i->parent;
     while (ancestor != nullptr) {
-        luau_context ctx = L;
+        low_level_luau_context ctx = L;
         ctx.push_object(Instance::IsA,"Instance::IsA");
         ctx.push_objects(ancestor,v);
         ctx.call(2,1);
@@ -411,7 +411,7 @@ int Instance::FindFirstChildWhichIsA(lua_State *L) {
     RBXVariant v = fn.as_object(2);
     LuaString n = LuaString(v.get_str(),v.get_slen());
     for (Instance* child : i->children) {
-        luau_context ctx = L;
+        low_level_luau_context ctx = L;
         ctx.push_object(Instance::IsA,"Instance::IsA");
         ctx.push_objects(child,v);
         ctx.call(2,1);

@@ -243,7 +243,7 @@ int RobloxVM::do_string(const String &code, const String &chunkname) {
     if (status != LUA_OK)
         return status;
 #ifndef NDEBUG
-    luau_context ctx = vm->main_synchronized;
+    low_level_luau_context ctx = vm->main_synchronized;
     ctx.print_stack();
     ctx.print_stack_absolute();
 #endif

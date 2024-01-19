@@ -52,32 +52,32 @@ luau_State::~luau_State() {
     ::lua_close(this->L);
 }
 
-LuaObject::LuaObject(luau_State *L) {
-    luau_context state = L;
+LowLevelLuaRefObject::LowLevelLuaRefObject(luau_State *L) {
+    low_level_luau_context state = L;
     ref = state.new_ref(-1);
     state.pop_stack(1);
     ls = L;
 }
-LuaObject::LuaObject(luau_State *L, int idx) {
-    luau_context state = L;
+LowLevelLuaRefObject::LowLevelLuaRefObject(luau_State *L, int idx) {
+    low_level_luau_context state = L;
     ref = state.new_ref(idx);
     state.remove_stack(idx);
     ls = L;
 }
-LuaObject::LuaObject(const LuaObject& o) {
+LowLevelLuaRefObject::LowLevelLuaRefObject(const LowLevelLuaRefObject& o) {
     ls = o.ls;
-    luau_context state = ls;
+    low_level_luau_context state = ls;
     state.push_ref(o.ref);
     ref = state.new_ref(-1);
     // auto resize stack
 }
-LuaObject::~LuaObject() {
-    luau_context origin = ls;
+LowLevelLuaRefObject::~LowLevelLuaRefObject() {
+    low_level_luau_context origin = ls;
     origin.delete_ref(ref);
 }
-void LuaObject::get(luau_State *to) const {
-    luau_context origin = ls;
-    luau_context to_ = to;
+void LowLevelLuaRefObject::get(luau_State *to) const {
+    low_level_luau_context origin = ls;
+    low_level_luau_context to_ = to;
     to_.dont_clear_stack();
     origin.push_ref(ref);
     switch (origin.get_type(-1)) { // TODO: fix this janky mess
@@ -120,7 +120,7 @@ void LuaObject::get(luau_State *to) const {
                 origin.pop_stack(1);
                 int key = 0;
                 while (true) {
-                    luau_context iter = ls;
+                    low_level_luau_context iter = ls;
                     key = iter.rawiter(-1, key);
                     if (key == -1) break;
                     if (!iter.is_type(-2, LUA_TSTRING)) continue; // automatic popping of the key and value
@@ -144,7 +144,7 @@ void LuaObject::get(luau_State *to) const {
                         for (int tbl_idx : to->tables_in_conversion) {
                             if (origin.rawequal(-1,tbl_idx)) {
                                 to_.pop_stack(1); // pop the key
-                                goto continue_out; // delete luau_context upon reloading loop. causes a stack pop in origin
+                                goto continue_out; // delete low_level_luau_context upon reloading loop. causes a stack pop in origin
                             }
                             RBXVariant _v = origin.to_object(-1);
                             to_.push_object(_v);
@@ -154,7 +154,7 @@ void LuaObject::get(luau_State *to) const {
                     case LUA_TUSERDATA:
                         // TODO: create a proxy object 
                         to_.pop_stack(1); // pop the key
-                        continue; // delete luau_context upon reloading loop. causes a stack pop in origin
+                        continue; // delete low_level_luau_context upon reloading loop. causes a stack pop in origin
                     case LUA_TFUNCTION:
                         if (iter.is_cfunction(-1)) {
                             to_.push_object(origin.as_cfunc());
@@ -172,7 +172,7 @@ void LuaObject::get(luau_State *to) const {
                 int key = 0;
                 int lastkey = 0;
                 while (true) {
-                    luau_context iter = ls;
+                    low_level_luau_context iter = ls;
                     key = iter.rawiter(-1, key);
                     if (key == -1) break;
                     if (key != lastkey+1) break;
@@ -196,7 +196,7 @@ void LuaObject::get(luau_State *to) const {
                         for (int tbl_idx : to->tables_in_conversion) {
                             if (origin.rawequal(-1,tbl_idx)) {
                                 to_.pop_stack(1); // pop the key
-                                continue; // delete luau_context upon reloading loop. causes a stack pop in origin
+                                continue; // delete low_level_luau_context upon reloading loop. causes a stack pop in origin
                             }
                             RBXVariant v = origin.to_object(-1);
                             to_.push_object(v);
@@ -206,7 +206,7 @@ void LuaObject::get(luau_State *to) const {
                     case LUA_TUSERDATA:
                         // TODO: create a proxy object 
                         to_.pop_stack(1); // pop the key
-                        continue; // delete luau_context upon reloading loop. causes a stack pop in origin
+                        continue; // delete low_level_luau_context upon reloading loop. causes a stack pop in origin
                     case LUA_TFUNCTION:
                         if (iter.is_cfunction(-1)) {
                             to_.push_object(origin.as_cfunc());
@@ -224,17 +224,17 @@ void LuaObject::get(luau_State *to) const {
     }
     // value is pushed, origin on auto-clear
 }
-bool LuaObject::operator==(const LuaObject& o) const {
-    luau_context origin = ls;
+bool LowLevelLuaRefObject::operator==(const LowLevelLuaRefObject& o) const {
+    low_level_luau_context origin = ls;
     origin.push_ref(ref);
     origin.push_object(o);
     return origin.rawequal(-2, -1);
 }
-bool LuaObject::operator!=(const LuaObject& o) const {
+bool LowLevelLuaRefObject::operator!=(const LowLevelLuaRefObject& o) const {
     return not (*this == o);
 }
 
-void luau_context::push_object(const RBXVariant& v) {
+void low_level_luau_context::push_object(const RBXVariant& v) {
     switch (v.type) {
     case RBXVariant::Type::RBXVARIANT_NIL:
         ::lua_pushnil(L);
@@ -249,7 +249,7 @@ void luau_context::push_object(const RBXVariant& v) {
         ::lua_pushnumber(L, (double)v);
         break;
     case RBXVariant::Type::RBXVARIANT_OBJ:
-        push_object((LuaObject&)v);
+        push_object((LowLevelLuaRefObject&)v);
         break;
     case RBXVariant::Type::RBXVARIANT_STR:
         ::lua_pushlstring(L, v.get_str(), v.get_slen());
@@ -261,11 +261,11 @@ void luau_context::push_object(const RBXVariant& v) {
         break;
     }
 }
-void luau_context::push_object(const RBXVariant& v, int idx) {
+void low_level_luau_context::push_object(const RBXVariant& v, int idx) {
     push_object(v);
     ::lua_insert(L, idx);
 }
-RBXVariant luau_context::as_object() {
+RBXVariant low_level_luau_context::as_object() {
     RBXVariant v;
     switch (get_type(-1)) {
     case LUA_TNIL:
@@ -290,13 +290,13 @@ RBXVariant luau_context::as_object() {
     case LUA_TTABLE:
     case LUA_TUSERDATA:
         ::lua_pushvalue(L, -1);
-        LuaObject lo = LuaObject(ls);
+        LowLevelLuaRefObject lo = LowLevelLuaRefObject(ls);
         v = RBXVariant(lo);
         break;
     }
     return v;
 }
-RBXVariant luau_context::as_object(int idx) {
+RBXVariant low_level_luau_context::as_object(int idx) {
     RBXVariant v;
     switch (get_type(idx)) {
     case LUA_TNIL:
@@ -321,23 +321,23 @@ RBXVariant luau_context::as_object(int idx) {
     case LUA_TTABLE:
     case LUA_TUSERDATA:
         ::lua_pushvalue(L, idx);
-        LuaObject lo = LuaObject(ls);
+        LowLevelLuaRefObject lo = LowLevelLuaRefObject(ls);
         v = RBXVariant(lo);
         break;
     }
     return v;
 }
-RBXVariant luau_context::to_object() {
+RBXVariant low_level_luau_context::to_object() {
     RBXVariant v = as_object();
     pop_stack(1);
     return v;
 }
-RBXVariant luau_context::to_object(int idx) {
+RBXVariant low_level_luau_context::to_object(int idx) {
     RBXVariant v = as_object(idx);
     remove_stack(idx);
     return v;
 }
-void luau_context::push_object(Instance *p) {
+void low_level_luau_context::push_object(Instance *p) {
     if (p == nullptr) {
         push_object();
     } else {
@@ -346,11 +346,11 @@ void luau_context::push_object(Instance *p) {
         remove_stack(-2);
     }
 }
-void luau_context::push_object(Instance *p, int idx) {
+void low_level_luau_context::push_object(Instance *p, int idx) {
     push_object(p);
     ::lua_insert(L, idx);
 }
-void luau_context::push_object(RBXScriptSignal *p) {
+void low_level_luau_context::push_object(RBXScriptSignal *p) {
     if (p == nullptr) {
         push_object();
     } else {
@@ -359,14 +359,14 @@ void luau_context::push_object(RBXScriptSignal *p) {
         remove_stack(-2);
     }
 }
-void luau_context::push_object(RBXScriptSignal *p, int idx) {
+void low_level_luau_context::push_object(RBXScriptSignal *p, int idx) {
     push_object(p);
     ::lua_insert(L, idx);
 }
-TaskScheduler* luau_context::get_task_scheduler() {
+TaskScheduler* low_level_luau_context::get_task_scheduler() {
     return get_vm()->task;
 }
-int luau_context::compile(const char* fname, LuaString code, int env_idx) {
+int low_level_luau_context::compile(const char* fname, LuaString code, int env_idx) {
     size_t bytecode_size;
     char* bytecode = luau_compile(code.s, code.l, &rblx_vm_compile_options, &bytecode_size);
     if (bytecode == nullptr) {
@@ -378,7 +378,7 @@ int luau_context::compile(const char* fname, LuaString code, int env_idx) {
 }
 
 void RobloxVMInstance::register_types(lua_State *L) { // TODO: add __type
-    luau_context ctx = L;
+    low_level_luau_context ctx = L;
 
     ctx.newmetatable_type(ctx.UD_TRBXSCRIPTSIGNAL);
     ctx.set_dtor(ctx.UD_TRBXSCRIPTSIGNAL, RBXScriptSignal::lua_destroy);
@@ -410,7 +410,7 @@ void RobloxVMInstance::register_types(lua_State *L) { // TODO: add __type
     ctx.pop_stack(1);
 }
 void RobloxVMInstance::register_genv(lua_State *L) {
-    luau_context ctx = L;
+    low_level_luau_context ctx = L;
 
     ctx.new_table();
     ctx.push_object(&Instance::new_instance,"Instance::new");
@@ -452,7 +452,7 @@ void RobloxVMInstance::register_genv(lua_State *L) {
     ctx.setglobal("wait");
 }
 void RobloxVMInstance::register_registry(lua_State *L) {
-    luau_context ctx = L;
+    low_level_luau_context ctx = L;
     ctx.new_table();
     ctx.setregistry("INSTANCE_TAGS");
 
@@ -515,7 +515,7 @@ RobloxVMInstance::~RobloxVMInstance() {
 
 TaskScheduler::TaskScheduler(RobloxVMInstance *VM) {
     this->vm = VM;
-    luau_context ctx = VM->main_synchronized;
+    low_level_luau_context ctx = VM->main_synchronized;
     /*ctx.new_table();
     ctx.setregistry("TASK_legacy_spawn");
     ctx.new_table();
@@ -645,7 +645,7 @@ int TaskScheduler::lua_task_wait(lua_State *L) {
     return fn.yield(0);
 }
 bool TaskScheduler::dispatch(lua_State *L) {
-    luau_context ctx = L;
+    low_level_luau_context ctx = L;
     int64_t iter;
     // TODO: Implement deprecated stuff
     // {thread, funcargs...}
@@ -654,7 +654,7 @@ bool TaskScheduler::dispatch(lua_State *L) {
     ctx.setregistry("TASK_await_defer"); // put new table in it
     iter = 0;
     while (true) {
-        luau_context for_loop_scope = L;
+        low_level_luau_context for_loop_scope = L;
         iter = ctx.rawiter(-1,iter);
         if (iter == -1) break;
         int nargs = ctx.push_vararg_array_and_pop(-1);
@@ -669,7 +669,7 @@ bool TaskScheduler::dispatch(lua_State *L) {
     ctx.setregistry("TASK_await_delay"); // put new table in it
     iter = 0;
     while (true) {
-        luau_context for_loop_scope = L;
+        low_level_luau_context for_loop_scope = L;
         iter = ctx.rawiter(-1,iter);
         if (iter == -1) break;
         ctx.rawget(-1, 3);
@@ -697,7 +697,7 @@ bool TaskScheduler::dispatch(lua_State *L) {
     ctx.setregistry("TASK_await_wait"); // put new table in it
     iter = 0;
     while (true) {
-        luau_context for_loop_scope = L;
+        low_level_luau_context for_loop_scope = L;
         iter = ctx.rawiter(-1,iter);
         if (iter == -1) break;
         ctx.rawget(-1, 3);
@@ -727,7 +727,7 @@ bool TaskScheduler::dispatch(lua_State *L) {
     return false;
 }
 bool TaskScheduler::dispatch(luau_State *L) {
-    luau_context ctx = L;
+    low_level_luau_context ctx = L;
     int64_t iter;
     // TODO: Implement deprecated stuff
     // {thread, funcargs...}
@@ -736,7 +736,7 @@ bool TaskScheduler::dispatch(luau_State *L) {
     ctx.setregistry("TASK_await_defer"); // put new table in it
     iter = 0;
     while (true) {
-        luau_context for_loop_scope = L;
+        low_level_luau_context for_loop_scope = L;
         iter = ctx.rawiter(-1,iter);
         if (iter == -1) break;
         int nargs = ctx.push_vararg_array_and_pop(-1);
@@ -751,7 +751,7 @@ bool TaskScheduler::dispatch(luau_State *L) {
     ctx.setregistry("TASK_await_delay"); // put new table in it
     iter = 0;
     while (true) {
-        luau_context for_loop_scope = L;
+        low_level_luau_context for_loop_scope = L;
         iter = ctx.rawiter(-1,iter);
         if (iter == -1) break;
         ctx.rawget(-1, 3);
@@ -779,7 +779,7 @@ bool TaskScheduler::dispatch(luau_State *L) {
     ctx.setregistry("TASK_await_wait"); // put new table in it
     iter = 0;
     while (true) {
-        luau_context for_loop_scope = L;
+        low_level_luau_context for_loop_scope = L;
         iter = ctx.rawiter(-1,iter);
         if (iter == -1) break;
         ctx.rawget(-1, 3);
@@ -808,7 +808,7 @@ bool TaskScheduler::dispatch(luau_State *L) {
     if (ctx.len(-1) > 0) return true;
     return false;
 }
-void TaskScheduler::dispatch_thread(luau_context& ctx, size_t nargs) {
+void TaskScheduler::dispatch_thread(low_level_luau_context& ctx, size_t nargs) {
     lua_State* thr = ctx.as_thread(-nargs-1);
     int status = ctx.resume(nargs,0);
     if (status == LUA_ERRRUN) {
@@ -816,7 +816,7 @@ void TaskScheduler::dispatch_thread(luau_context& ctx, size_t nargs) {
     }
 }
 bool TaskScheduler::dead(luau_State *L) {
-    luau_context ctx = L;
+    low_level_luau_context ctx = L;
     uint32_t len = 0;
     ctx.getregistry("TASK_await_defer");
     len+= ctx.len(-1);

@@ -130,7 +130,7 @@ void BaseScript::setEnable(bool enable, bool now) {
         if (actor == nullptr) {
             L = this->VM->main_synchronized;
         }// TODO: Implement if actor exists
-        luau_context ctx = L;
+        low_level_luau_context ctx = L;
 
         ctx.new_dictionary(3);
         ctx.push_object(this);
@@ -182,7 +182,7 @@ void BaseScript::setEnable(bool enable, bool now) {
         if (actor == nullptr) {
             L = this->VM->main_synchronized;
         }// TODO: Implement if actor exists
-        luau_context ctx = L;
+        low_level_luau_context ctx = L;
 
         ctx.push_ref(env_ref);
         ctx.clear_table();
@@ -191,7 +191,7 @@ void BaseScript::setEnable(bool enable, bool now) {
 
         ctx.push_ref(threads_ref);
         while (true) {
-            luau_context for_loop_closure = L;
+            low_level_luau_context for_loop_closure = L;
             iter = ctx.rawiter(-1,iter);
             if (iter == -1) return;
             ctx.push_object(ctx.get_task_scheduler()->lua_task_cancel,"task::cancel",-2);
@@ -204,7 +204,7 @@ void BaseScript::setEnable(bool enable, bool now) {
         iter = 0;
         ctx.push_ref(connections_ref);
         while (true) {
-            luau_context for_loop_closure = L;
+            low_level_luau_context for_loop_closure = L;
             iter = ctx.rawiter(-1,iter);
             if (iter == -1) return;
             RBXScriptConnection* connection = ctx.as_userdata<RBXScriptConnection>(-1);
@@ -235,7 +235,7 @@ void BaseScript::_clone_object(Instance* i) const {
     if (actor == nullptr) {
         L = VM->main_synchronized;
     }
-    luau_context ctx = L;
+    low_level_luau_context ctx = L;
     ctx.push_objects(VM->task->lua_task_delay, Instance::lua_static_set, .15, b, "Enabled", Enabled);
     ctx.call(5, 0);
 }
@@ -308,7 +308,7 @@ void Script::_clone_object(Instance* i) const {
     s->Source = Source;
 }
 Instance* Script::clone_object() const {
-    luau_context ctx = VM->main_synchronized;
+    low_level_luau_context ctx = VM->main_synchronized;
     Script* s = ctx.new_instance<Script>(VM);
     Instance::_clone_object(s);
     BaseScript::_clone_object(s);
@@ -340,7 +340,7 @@ LocalScript::LocalScript(RobloxVMInstance *vm) : Script(vm) {
     Name = "LocalScript";
 }
 Instance* LocalScript::clone_object() const {
-    luau_context ctx = VM->main_synchronized;
+    low_level_luau_context ctx = VM->main_synchronized;
     LocalScript* s = ctx.new_instance<LocalScript>(VM);
     Instance::_clone_object(s);
     BaseScript::_clone_object(s);

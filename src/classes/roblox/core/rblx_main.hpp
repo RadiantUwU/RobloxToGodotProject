@@ -21,24 +21,24 @@ class Instance;
 class BaseScript;
 class RobloxVMInstance;
 class luau_State;
-class luau_context;
+class low_level_luau_context;
 class RBXScriptConnection;
 class RBXScriptSignal;
 class TaskScheduler;
 
-class LuaObject final {
+class LowLevelLuaRefObject final {
     luau_State *ls;
     int ref;
     friend class luau_State;
-    friend class luau_context;
-    LuaObject(luau_State *L);
-    LuaObject(luau_State *L, int idx);
+    friend class low_level_luau_context;
+    LowLevelLuaRefObject(luau_State *L);
+    LowLevelLuaRefObject(luau_State *L, int idx);
     void get(luau_State *to) const;
 public:
-    LuaObject(const LuaObject& o);
-    ~LuaObject();
-    bool operator==(const LuaObject& o) const;
-    bool operator!=(const LuaObject& o) const;
+    LowLevelLuaRefObject(const LowLevelLuaRefObject& o);
+    ~LowLevelLuaRefObject();
+    bool operator==(const LowLevelLuaRefObject& o) const;
+    bool operator!=(const LowLevelLuaRefObject& o) const;
 };
 
 class luau_State final {
@@ -46,8 +46,8 @@ class luau_State final {
     RobloxVMInstance *vm;
     ::std::recursive_mutex mtx;
     Vector<int> tables_in_conversion;
-    friend class LuaObject;
-    friend class luau_context;
+    friend class LowLevelLuaRefObject;
+    friend class low_level_luau_context;
     lua_CFunction errhandle = nullptr;
 public:
     luau_State(RobloxVMInstance *VM, lua_State *state);
@@ -59,10 +59,10 @@ public:
     }
 };
 
-class luau_context { // middle level abstraction
+class low_level_luau_context { // middle level abstraction
 private:
     static int thr_pcall(lua_State *L) {
-        luau_context ctx = L;
+        low_level_luau_context ctx = L;
         int r = ctx.pcall(ctx.get_stack_size()-2,LUA_MULTRET,1);
         if (r != ctx.get_stack_size()-1) {
             lua_error(L);
@@ -76,7 +76,7 @@ protected:
     luau_State *ls;
     int64_t last_stack_size;
     int thr_ref;
-    friend class LuaObject;
+    friend class LowLevelLuaRefObject;
 public:
     #pragma region USERDATA
     static constexpr int UD_TAXES = 1;
@@ -163,7 +163,7 @@ public:
     };
     #pragma endregion
 
-    luau_context(lua_State *s) {
+    low_level_luau_context(lua_State *s) {
         L = s;
         getregistry("LUAU_STATE");
         ls = (luau_State*)lua_tolightuserdata(L, -1);
@@ -174,7 +174,7 @@ public:
         thr_ref = lua_ref(L, -1);
         lua_pop(L, 1);
     }
-    luau_context(luau_State* state, lua_State *thr) {
+    low_level_luau_context(luau_State* state, lua_State *thr) {
         ls = state;
         ls->mtx.lock();
         L = thr;
@@ -183,7 +183,7 @@ public:
         thr_ref = lua_ref(L, -1);
         lua_pop(L, 1);
     }
-    luau_context(luau_State *state) {
+    low_level_luau_context(luau_State *state) {
         ls = state;
         ls->mtx.lock();
         L = state->L;
@@ -192,7 +192,7 @@ public:
         thr_ref = lua_ref(L, -1);
         lua_pop(L, 1);
     }
-    ~luau_context() {
+    ~low_level_luau_context() {
         clear_stack();
         lua_unref(L, thr_ref);
         ls->mtx.unlock();
@@ -215,7 +215,7 @@ public:
     RBLX_INLINE void push_object(lua_CFunction f, const char* fname = "<C++ context>") { lua_pushcfunction(L, f, fname); }
     RBLX_INLINE void push_object(void* p) { ::lua_pushlightuserdata(L, p); }
     RBLX_INLINE void push_cclosure(lua_CFunction f, int nup, const char* fname = "<C++ context>") { lua_pushcclosure(L, f, fname, nup); }
-    RBLX_INLINE void push_object(const LuaObject& obj) { obj.get(ls); }
+    RBLX_INLINE void push_object(const LowLevelLuaRefObject& obj) { obj.get(ls); }
     RBLX_INLINE void push_object(const LuaString& s) { ::lua_pushlstring(L, s.s, s.l); }
     void push_object(const RBXVariant& v);
     void push_object(RBXScriptSignal* signal);
@@ -227,7 +227,7 @@ public:
     RBLX_INLINE void push_object(lua_State *thr, int idx) { ::lua_pushthread(thr); ::lua_xmove(thr, L, 1); ::lua_insert(L, idx); };
     RBLX_INLINE void push_object(const char* str, int idx) { ::lua_pushstring(L, str); ::lua_insert(L, idx); }
     RBLX_INLINE void push_object(const char* str, size_t len, int idx) { ::lua_pushlstring(L, str, len); ::lua_insert(L, idx); }
-    RBLX_INLINE void push_object(const LuaObject& obj, int idx) { obj.get(ls); ::lua_insert(L, idx); }
+    RBLX_INLINE void push_object(const LowLevelLuaRefObject& obj, int idx) { obj.get(ls); ::lua_insert(L, idx); }
     RBLX_INLINE void push_object(lua_CFunction f, const char* fname, int idx) { lua_pushcfunction(L, f, fname); ::lua_insert(L, idx); }
     RBLX_INLINE void push_object(void* p, int idx) { ::lua_pushlightuserdata(L, p); ::lua_insert(L, idx); }
     RBLX_INLINE void push_object(const LuaString& s, int idx) { ::lua_pushlstring(L, s.s, s.l); ::lua_insert(L, idx); }
@@ -491,7 +491,7 @@ public:
         lua_xmove(L, thr, nargs);
 #ifndef NDEBUG
         {
-            luau_context ctx = thr;
+            low_level_luau_context ctx = thr;
             RBLX_PRINT_VERBOSE("Resuming thread! Current stack: ");
             ctx.print_stack_absolute();
         }
@@ -696,15 +696,15 @@ public:
     }
 };
 
-class luau_function_context : public luau_context {
+class luau_function_context : public low_level_luau_context {
 public:
-    luau_function_context(lua_State *L) : luau_context(L) {
+    luau_function_context(lua_State *L) : low_level_luau_context(L) {
         dont_clear_stack();
     }
-    luau_function_context(luau_State *L) : luau_context(L) {
+    luau_function_context(luau_State *L) : low_level_luau_context(L) {
         dont_clear_stack();
     }
-    luau_function_context(luau_State *L, lua_State *thr) : luau_context(L,thr) {
+    luau_function_context(luau_State *L, lua_State *thr) : low_level_luau_context(L,thr) {
         dont_clear_stack();
     }
     int lua_return(int nargs) const {
@@ -721,7 +721,7 @@ private:
         int64_t integer = 0;
         bool boolean;
         double number;
-        LuaObject obj;
+        LowLevelLuaRefObject obj;
         struct { // string
             char* str;
             size_t strl;
@@ -742,7 +742,7 @@ public:
     RBXVariant(bool b) : type(Type::RBXVARIANT_BOOL), boolean(b) {}
     RBXVariant(int64_t i) : type(Type::RBXVARIANT_INT), integer(i) {}
     RBXVariant(double n) : type(Type::RBXVARIANT_NUM), number(n) {}
-    RBXVariant(LuaObject& o) : type(Type::RBXVARIANT_OBJ), obj(o) { RBLX_PRINT_VERBOSE("Initializing RBXVariant with obj ", &o);}
+    RBXVariant(LowLevelLuaRefObject& o) : type(Type::RBXVARIANT_OBJ), obj(o) { RBLX_PRINT_VERBOSE("Initializing RBXVariant with obj ", &o);}
     RBXVariant(const char *s) : type(Type::RBXVARIANT_STR) {
         if (s == nullptr) {
             str = (char*)memalloc(sizeof(char));
@@ -820,7 +820,7 @@ public:
     ~RBXVariant() {
         switch (type) {
         case Type::RBXVARIANT_OBJ:
-            obj.~LuaObject();
+            obj.~LowLevelLuaRefObject();
             break;
         case Type::RBXVARIANT_STR:
             memfree(str);
@@ -857,13 +857,13 @@ public:
         default: return NAN;
         }
     }
-    operator LuaObject() const {
-        return LuaObject(obj);
+    operator LowLevelLuaRefObject() const {
+        return LowLevelLuaRefObject(obj);
     }
-    operator LuaObject&() {
+    operator LowLevelLuaRefObject&() {
         return obj;
     }
-    typedef const LuaObject ConstLuaObject;
+    typedef const LowLevelLuaRefObject ConstLuaObject;
     operator ConstLuaObject&() const {
         return obj;
     }
@@ -910,7 +910,7 @@ class TaskScheduler {
     friend class RobloxVMInstance;
     TaskScheduler(RobloxVMInstance *vm);
 protected:
-    void dispatch_thread(luau_context& ctx, size_t nargs);
+    void dispatch_thread(low_level_luau_context& ctx, size_t nargs);
 public: 
     ~TaskScheduler();
     static int lua_task_error_handler(lua_State *L);
@@ -995,7 +995,7 @@ class RobloxVMInstance final {
         return 1;
     }
     static int lua_getmetatable_override(lua_State *L) {
-        luau_context ls = L;
+        low_level_luau_context ls = L;
         ls.assert_stack_size(1);
         ls.assert_type_argument(1,"t",LUA_TTABLE,LUA_TUSERDATA);
         if (ls.is_type(1, LUA_TTABLE) or ls.is_utype(1, -1)) {
@@ -1007,7 +1007,7 @@ class RobloxVMInstance final {
         return 0;
     }
     static int lua_setmetatable_override(lua_State *L) {
-        luau_context ls = L;
+        low_level_luau_context ls = L;
         ls.assert_stack_size(1,2);
         ls.assert_type_argument(1,"t",LUA_TTABLE,LUA_TUSERDATA);
         if (!ls.has_argument(2)) 
