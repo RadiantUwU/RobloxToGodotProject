@@ -6,5 +6,3 @@
 script = ExtResource("1_fr1je")
 
 [node name="RobloxVM" type="RobloxVM" parent="."]
-
-[connection signal="stdout" from="RobloxVM" to="." method="_on_luau_vm_stdout"]
