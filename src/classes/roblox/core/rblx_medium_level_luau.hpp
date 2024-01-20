@@ -11,6 +11,7 @@ class LuaObject {
     friend class luau_context;
     friend class List<LuaObject>;
     bool is_local = false;
+    int idx = -1;
 protected:
     low_level_luau_context* ctx = nullptr;
     LuaObject(low_level_luau_context& ctx);
