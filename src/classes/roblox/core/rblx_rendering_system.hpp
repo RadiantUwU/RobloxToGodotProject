@@ -93,9 +93,29 @@ public:
     void set_viewport(Viewport* new_viewport);
 };
 
-class RBXBasePartRender {
+class RBXRenderBasePart : public RBXRenderObject {
+    RBXVector3 size;//=RBXVector3::ONE
+public:
     virtual void resize(RBXVector3 new_size);
     virtual void set_reflectance(float refl);
+    virtual void set_transparency(float transparency);
+    virtual void set_local_transparency(float local_transparency);
+    virtual void set_color(Color3 color);
+    //virtual void set_material(RBXMaterial material);
+};
+class RBXMeshPart : public RBXRenderBasePart {
+    RefCountedRID mesh;
+public:
+    virtual void resize(RBXVector3 new_size) override;
+    virtual void set_reflectance(float refl) override;
+    virtual void set_transparency(float transparency) override;
+    virtual void set_local_transparency(float local_transparency) override;
+    virtual void set_color(Color3 color) override;
+    //virtual void set_material(RBXMaterial material) override;
+    void set_mesh(RefCountedRID rid);
+}
+class RBXPartRender : public RBXRenderBasePart {
+    virtual void 
 };
 
 }; // namespace godot
