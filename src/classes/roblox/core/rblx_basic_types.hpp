@@ -213,6 +213,8 @@ struct RBXVector3 {
         const double m = getMagnitude();
         return {X/m,Y/m/Z/m};
     }
+    static constexpr RBXVector3 ONE = {1,1,1};
+    static constexpr RBXVector3 ZERO = {0,0,0};
     // TODO: other stuff
 };
 struct CFrame {

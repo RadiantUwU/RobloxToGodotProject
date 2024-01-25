@@ -14,6 +14,8 @@ namespace godot {
 
 CFrame from_godot_transform(Transform3D transform);
 Transform3D to_godot_transform(CFrame cframe);
+template <typename... T>
+CFrame pivot_cframe(CFrame lowest, CFrame... others);
 
 class RBXRenderObject {
 protected:
@@ -84,6 +86,11 @@ protected:
     RID canvas;//2D
     RID environment;
     RID workspace_instance;
+protected:
+    RID cube;
+    RID cylinder;
+    RID sphere;
+    RID wedge;
 public:
     RBXRenderingSystem();
     ~RBXRenderingSystem();
@@ -94,14 +101,15 @@ public:
 };
 
 class RBXRenderBasePart : public RBXRenderObject {
-    RBXVector3 size;//=RBXVector3::ONE
+protected:
+    RBXVector3 size = RBXVector3::ONE;
 public:
-    virtual void resize(RBXVector3 new_size);
-    virtual void set_reflectance(float refl);
-    virtual void set_transparency(float transparency);
-    virtual void set_local_transparency(float local_transparency);
-    virtual void set_color(Color3 color);
-    //virtual void set_material(RBXMaterial material);
+    virtual void resize(RBXVector3 new_size) = 0;
+    virtual void set_reflectance(float refl) = 0;
+    virtual void set_transparency(float transparency) = 0;
+    virtual void set_local_transparency(float local_transparency) = 0;
+    virtual void set_color(Color3 color) = 0;
+    //virtual void set_material(RBXMaterial material) = 0;
 };
 class RBXMeshPart : public RBXRenderBasePart {
     RefCountedRID mesh;
@@ -115,7 +123,21 @@ public:
     void set_mesh(RefCountedRID rid);
 }
 class RBXPartRender : public RBXRenderBasePart {
-    virtual void 
+public:
+    enum PartType {
+        TYPE_BLOCK,
+        TYPE_WEDGE,
+        TYPE_CYLINDER,
+        TYPE_SPHERE,
+        TYPE_CORNERWEDGE
+    };
+    virtual void resize(RBXVector3 new_size) override;
+    virtual void set_reflectance(float refl) override;
+    virtual void set_transparency(float transparency) override;
+    virtual void set_local_transparency(float local_transparency) override;
+    virtual void set_color(Color3 color) override;
+    //virtual void set_material(RBXMaterial material) override;
+    void set_part_type(PartType type);
 };
 
 }; // namespace godot
