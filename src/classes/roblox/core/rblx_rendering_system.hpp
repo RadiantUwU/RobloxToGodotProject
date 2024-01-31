@@ -151,6 +151,11 @@ public:
 
     template<typename T>
     void create() {}
+
+    template <>
+    RBXMeshPart&& create<RBXMeshPart>();
+    template <>
+    RBXPartRender&& create<RBXPartRender>();
 };
 
 
