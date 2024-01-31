@@ -12,35 +12,78 @@
 
 namespace godot {
 
+class RBXRenderingSystem;
+
 CFrame from_godot_transform(Transform3D transform);
 Transform3D to_godot_transform(CFrame cframe);
 template <typename... T>
-CFrame pivot_cframe(CFrame lowest, CFrame... others);
+CFrame pivot_cframe(CFrame lowest, T... others);
+CFrame pivot_cframe(CFrame lowest);
+/*
+template <typename... T>
+Transform3D _pivot_transform(CFrame lowest, T... others);
+Transform3D _pivot_transform(CFrame lowest);
+*/// Hide the functions from the header, essentially making them private.
 
 class RBXRenderObject {
 protected:
     RID instance;
     RBXRenderingSystem* rblx_renderer;
-    RBXRenderObject();
+    RBXRenderObject()=default;
 public:
     RBXRenderObject(RBXRenderObject&&);
-    /*RBXRenderObject(RBXRenderObject&) = delete;
-    RBXRenderObject& operator=(RBXRenderObject) = delete;
-    RBXRenderObject& operator=(RBXRenderObject&&);*/
+    RBXRenderObject& operator=(RBXRenderObject&&);
     ~RBXRenderObject();
-    void set_position(CFrame position);
+    virtual void set_position(CFrame position);
     void set_visible(bool visible);
 };
-
+class RBXRenderBasePart : public RBXRenderObject {
+protected:
+    RBXVector3 size = RBXVector3::ONE;
+public:
+    RBXRenderBasePart(RBXRenderBasePart&&);
+    RBXRenderBasePart& operator=(RBXRenderBasePart&&);
+    virtual void resize(RBXVector3 new_size) {
+        size = new_size;
+    }
+    virtual void set_reflectance(float refl) {
+        rblx_renderer->rendering_server->instance_geometry_set_shader_parameter(instance, "reflectance", refl);
+    };
+    virtual void set_transparency(float transparency) {
+        rblx_renderer->rendering_server->instance_geometry_set_transparency(instance, transparency);
+    };
+    virtual void set_color(Color3 color) {
+        Vector3 v3 = Vector3(color.R,color.G,color.B);
+        rblx_renderer->rendering_server->instance_geometry_set_shader_parameter(instance, "color", color);
+    }
+    //virtual void set_material(RBXMaterial material) = 0;
+};
+class RBXMeshPart : public RBXRenderBasePart {
+    RefCountedRID mesh;
+public:
+    RBXMeshPart(RBXMeshPart&&);
+    RBXMeshPart& operator=(RBXMeshPart&&);
+    void set_mesh(RBXRenderingSystem::RefCountedRID rid);
+};
+class RBXPartRender : public RBXRenderBasePart {
+public:
+    RBXPartRender(RBXPartRender&&);
+    RBXPartRender& operator=(RBXPartRender&&);
+    enum PartType {
+        TYPE_BLOCK,
+        TYPE_WEDGE,
+        TYPE_CYLINDER,
+        TYPE_SPHERE,
+        TYPE_CORNERWEDGE
+    };
+    void set_part_type(PartType type);
+};
 class RBXRenderingSystem {
     friend class RBXRenderObject;
     friend class RBXMeshPart;
     bool enabled = false;
     Vector<RID> rids;
-    HashMap<RID,bool> is_supposed_to_be_visible;
-protected:
-    void add_rid(RID rid);
-    void delete_rid(RID rid); // destroys too
+    Vector<RID> materials;
 
     class _RefCountedRID {
         mutable size_t refcnt = 1;
@@ -49,6 +92,12 @@ protected:
         _RefCountedRID(const RID rid, RBXRenderingSystem* system) : rid(rid) {}
         const RID rid;
     };
+
+    void load_materials();
+protected:
+    void add_rid(RID rid);
+    void delete_rid(RID rid); // destroys too
+
     class RefCountedRID {
         _RefCountedRID* const rid_refcnted;
     public:
@@ -91,6 +140,7 @@ protected:
     RID cylinder;
     RID sphere;
     RID wedge;
+    RID corner_wedge;
 public:
     RBXRenderingSystem();
     ~RBXRenderingSystem();
@@ -98,47 +148,11 @@ public:
     void disable();
     void render();
     void set_viewport(Viewport* new_viewport);
+
+    template<typename T>
+    void create() {}
 };
 
-class RBXRenderBasePart : public RBXRenderObject {
-protected:
-    RBXVector3 size = RBXVector3::ONE;
-public:
-    virtual void resize(RBXVector3 new_size) = 0;
-    virtual void set_reflectance(float refl) = 0;
-    virtual void set_transparency(float transparency) = 0;
-    virtual void set_local_transparency(float local_transparency) = 0;
-    virtual void set_color(Color3 color) = 0;
-    //virtual void set_material(RBXMaterial material) = 0;
-};
-class RBXMeshPart : public RBXRenderBasePart {
-    RefCountedRID mesh;
-public:
-    virtual void resize(RBXVector3 new_size) override;
-    virtual void set_reflectance(float refl) override;
-    virtual void set_transparency(float transparency) override;
-    virtual void set_local_transparency(float local_transparency) override;
-    virtual void set_color(Color3 color) override;
-    //virtual void set_material(RBXMaterial material) override;
-    void set_mesh(RefCountedRID rid);
-}
-class RBXPartRender : public RBXRenderBasePart {
-public:
-    enum PartType {
-        TYPE_BLOCK,
-        TYPE_WEDGE,
-        TYPE_CYLINDER,
-        TYPE_SPHERE,
-        TYPE_CORNERWEDGE
-    };
-    virtual void resize(RBXVector3 new_size) override;
-    virtual void set_reflectance(float refl) override;
-    virtual void set_transparency(float transparency) override;
-    virtual void set_local_transparency(float local_transparency) override;
-    virtual void set_color(Color3 color) override;
-    //virtual void set_material(RBXMaterial material) override;
-    void set_part_type(PartType type);
-};
 
 }; // namespace godot
 
