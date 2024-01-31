@@ -149,7 +149,7 @@ public:
     void render();
     void set_viewport(Viewport* new_viewport);
 
-    template<typename T>
+    template<class T>
     void create() {}
 
     template <>
