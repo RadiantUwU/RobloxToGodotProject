@@ -113,6 +113,14 @@ public:
     }
 };
 
+enum Technology {
+    Legacy,
+    Voxel,
+    Compatibility,
+    ShadowMap,
+    Future
+};
+
 struct Axes {
     bool X,Y,Z,Top,Bottom,Left,Right,Back,Front = false;
 };

@@ -78,9 +78,63 @@ public:
     };
     void set_part_type(PartType type);
 };
+class RBXLight : public RBXRenderObject {
+protected:
+    RID light_instance;
+public:
+    RBXPartRender(RBXPartRender&&);
+    RBXPartRender& operator=(RBXPartRender&&);
+    virtual void create_light_instance() = 0;
+    
+    void set_brightness(float brightness);
+    void set_color(float brightness);
+    void set_enabled(bool v);
+    void set_enable_shadows(bool enable_shadows);
+};
+class RBXPointLight : public RBXLight {
+public:
+    virtual void create_light_instance() override;
+    void set_range(float range);
+};
+class RBXSpotLight : public RBXLight {
+public:
+    virtual void create_light_instance() override;
+    void set_range(float range);
+    //void set_face(NormalId normal);
+    void set_angle(float angle);
+};
+class RBXSurfaceLight : public RBXLight {
+public:
+    virtual void create_light_instance() override;
+    void set_range(float range);
+    //void set_face(NormalId normal);
+    void set_angle(float angle);
+};
+class RBXLowLevelLighting {
+protected:
+    RBXRenderingSystem* rblx_renderer;
+public:
+    void set_ambient_light(Color3 color);
+    void set_brightness(float brightness);
+    void set_clock_time(float time);
+    void set_colorshift_bottom(Color3 color);
+    void set_colorshift_top(Color3 color);
+    void set_environment_diffuse_scale(float scale);
+    void set_environment_specular_scale(float scale);
+    void set_exposure(float exp);
+    void set_fog_color(Color3 color);
+    void set_fog_end(float depth);
+    void set_fog_start(float depth);
+    void set_global_shadows(bool shadows);
+    void set_outdoor_ambient(Color3 ambient);
+    void set_shadow_softness(float soft);
+    void set_technology(Technology lighting_system);
+};
 class RBXRenderingSystem {
     friend class RBXRenderObject;
+    friend class RBXRenderBasePart;
     friend class RBXMeshPart;
+    friend class RBXPartRender;
     bool enabled = false;
     Vector<RID> rids;
     Vector<RID> materials;
