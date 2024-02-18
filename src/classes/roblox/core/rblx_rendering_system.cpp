@@ -110,6 +110,8 @@ void RBXRenderObject::set_visible(bool visible) {
 RBXRenderingSystem::RBXRenderingSystem() {
     rendering_server = RenderingServer::get_singleton();
     workspace_instance = rendering_server->instance_create();
+    load_meshes();
+    load_materials();
 }
 RBXRenderingSystem::~RBXRenderingSystem() {
     for (RID& rid : rids) {
@@ -152,6 +154,22 @@ void RBXRenderingSystem::set_viewport(Viewport* viewport) {
 void RBXRenderingSystem::render() {
     assert(enabled);
     rendering_server->force_draw();
+}
+void RBXRenderingSystem::load_materials() {
+    smooth_plastic = rendering_server->shader_create();
+    add_rid(smooth_plastic);
+    rendering_server->shader_set_code(smooth_plastic,
+    "shader_type spatial;"
+    "render_mode diffuse_toon, specular_toon;"
+    "uniform vec3 color : source_color;"
+    "uniform float reflectance : hint_range(0,1);"
+    "void fragment() {"
+    "   ALBEDO=color;"
+    "   ROUGHNESS=0.2;"
+    "   METALLIC=reflectance;"
+    "   SPECULAR=reflectance;"
+    "}"
+    );
 }
 
 RBXRenderBasePart::RBXRenderBasePart(RBXRenderBasePart&& o) : RBXRenderObject((RBXRenderObject&&)o) {

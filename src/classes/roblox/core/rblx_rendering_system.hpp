@@ -192,6 +192,8 @@ protected:
     RID environment;
     RID workspace_instance;
 protected:
+    RID smooth_plastic;
+
     RID cube;
     RID cylinder;
     RID sphere;
@@ -215,6 +217,12 @@ public:
     RBXMeshPart&& create<RBXMeshPart>();
     template <>
     RBXPartRender&& create<RBXPartRender>();
+    template <>
+    RBXPointLight&& create<RBXPointLight>();
+    template <>
+    RBXSpotLight&& create<RBXSpotLight>();
+    template <>
+    RBXSurfaceLight&& create<RBXSurfaceLight>();
 };
 
 
