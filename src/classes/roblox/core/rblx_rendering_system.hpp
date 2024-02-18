@@ -1,5 +1,8 @@
 #ifndef RBLX_RENDERING_SYSTEM
 #define RBLX_RENDERING_SYSTEM
+
+#include <type_traits>
+
 #include <godot_cpp/classes/rendering_server.hpp>
 #include <godot_cpp/classes/viewport.hpp>
 #include <godot_cpp/classes/environment.hpp>
@@ -24,12 +27,42 @@ template <typename... T>
 Transform3D _pivot_transform(CFrame lowest, T... others);
 Transform3D _pivot_transform(CFrame lowest);
 */// Hide the functions from the header, essentially making them private.
+namespace rblx_internal_rendering_system {
+class RefCountedRID {
+    class _RefCountedRID {
+    public:
+        mutable size_t refcnt = 1;
+        RBXRenderingSystem* const system;
+        _RefCountedRID(const RID rid, RBXRenderingSystem* system) : rid(rid), system(system) {}
+        const RID rid;
+    };
+    _RefCountedRID* rid_refcnted;
+public:
+    RefCountedRID() : rid_refcnted(nullptr) {}
+    RefCountedRID(RID rid, RBXRenderingSystem* system)
+        : rid_refcnted(new _RefCountedRID(rid, system))
+    {}
+    RefCountedRID(const RefCountedRID& o)
+        : rid_refcnted(o.rid_refcnted) 
+    {
+        rid_refcnted->refcnt++;
+    }
+    ~RefCountedRID();
+    operator RID() const {
+        return rid_refcnted->rid;
+    }
+    RID asRID() const {
+        return rid_refcnted->rid;
+    }
+};
+};//rblx_internal_rendering_system
 
 class RBXRenderObject {
 protected:
     RID instance;
     RBXRenderingSystem* rblx_renderer;
     RBXRenderObject()=default;
+    RenderingServer* get_server();
 public:
     RBXRenderObject(RBXRenderObject&&);
     RBXRenderObject& operator=(RBXRenderObject&&);
@@ -39,7 +72,7 @@ public:
 };
 class RBXRenderBasePart : public RBXRenderObject {
 protected:
-    RBXVector3 size = RBXVector3::ONE;
+    RBXVector3 size = {1,1,1};
 public:
     RBXRenderBasePart(RBXRenderBasePart&&);
     RBXRenderBasePart& operator=(RBXRenderBasePart&&);
@@ -47,23 +80,23 @@ public:
         size = new_size;
     }
     virtual void set_reflectance(float refl) {
-        rblx_renderer->rendering_server->instance_geometry_set_shader_parameter(instance, "reflectance", refl);
+        get_server()->instance_geometry_set_shader_parameter(instance, "reflectance", refl);
     };
     virtual void set_transparency(float transparency) {
-        rblx_renderer->rendering_server->instance_geometry_set_transparency(instance, transparency);
+        get_server()->instance_geometry_set_transparency(instance, transparency);
     };
     virtual void set_color(Color3 color) {
         Vector3 v3 = Vector3(color.R,color.G,color.B);
-        rblx_renderer->rendering_server->instance_geometry_set_shader_parameter(instance, "color", color);
+        get_server()->instance_geometry_set_shader_parameter(instance, "color", v3);
     }
     //virtual void set_material(RBXMaterial material) = 0;
 };
 class RBXMeshPart : public RBXRenderBasePart {
-    RefCountedRID mesh;
+    rblx_internal_rendering_system::RefCountedRID mesh;
 public:
     RBXMeshPart(RBXMeshPart&&);
     RBXMeshPart& operator=(RBXMeshPart&&);
-    void set_mesh(RBXRenderingSystem::RefCountedRID rid);
+    void set_mesh(rblx_internal_rendering_system::RefCountedRID rid);
 };
 class RBXPartRender : public RBXRenderBasePart {
 public:
@@ -82,13 +115,13 @@ class RBXLight : public RBXRenderObject {
 protected:
     RID light_instance;
 public:
-    RBXPartRender(RBXPartRender&&);
-    RBXPartRender& operator=(RBXPartRender&&);
+    RBXLight(RBXLight&&);
+    RBXLight& operator=(RBXLight&&);
     virtual void create_light_instance() = 0;
     
     void set_brightness(float brightness);
-    void set_color(float brightness);
-    void set_enabled(bool v);
+    void set_color(Color3 color);
+    //void set_enabled(bool v); // use set_visible
     void set_enable_shadows(bool enable_shadows);
 };
 class RBXPointLight : public RBXLight {
@@ -97,22 +130,29 @@ public:
     void set_range(float range);
 };
 class RBXSpotLight : public RBXLight {
+    CFrame last_position;
+    NormalId face;
 public:
     virtual void create_light_instance() override;
     void set_range(float range);
-    //void set_face(NormalId normal);
+    void set_face(NormalId normal);
+    void set_position(CFrame cframe) override;
     void set_angle(float angle);
 };
 class RBXSurfaceLight : public RBXLight {
 public:
-    virtual void create_light_instance() override;
+    void create_light_instance() override;
     void set_range(float range);
-    //void set_face(NormalId normal);
+    void set_face(NormalId normal);
     void set_angle(float angle);
 };
 class RBXLowLevelLighting {
 protected:
     RBXRenderingSystem* rblx_renderer;
+    friend class RBXRenderingSystem;
+    RBXLowLevelLighting()=default;
+    RBXLowLevelLighting(RBXLowLevelLighting&)=delete;
+    RBXLowLevelLighting& operator=(const RBXLowLevelLighting&)=delete;
 public:
     void set_ambient_light(Color3 color);
     void set_brightness(float brightness);
@@ -135,54 +175,16 @@ class RBXRenderingSystem {
     friend class RBXRenderBasePart;
     friend class RBXMeshPart;
     friend class RBXPartRender;
+    friend class rblx_internal_rendering_system::RefCountedRID;
     bool enabled = false;
     Vector<RID> rids;
     Vector<RID> materials;
 
-    class _RefCountedRID {
-        mutable size_t refcnt = 1;
-    public:
-        RBXRenderingSystem* const system;
-        _RefCountedRID(const RID rid, RBXRenderingSystem* system) : rid(rid) {}
-        const RID rid;
-    };
-
     void load_materials();
+    void load_meshes();
 protected:
     void add_rid(RID rid);
     void delete_rid(RID rid); // destroys too
-
-    class RefCountedRID {
-        _RefCountedRID* const rid_refcnted;
-    public:
-        RefCountedRID() : rid_refcnted(nullptr) {}
-        RefCountedRID(RID rid, RBXRenderingSystem* system)
-            : rid_refcnted(new _RefCountedRID(rid, system))
-        {}
-        RefCountedRID(const RefCountedRID o)
-            : rid_refcnted(o->ref_refcnted) 
-        {
-            rid_refcnted->ref_cnt++;
-        }
-        RefCountedRID(const RefCountedRID& o)
-            : rid_refcnted(o->ref_refcnted) 
-        {
-            rid_refcnted->ref_cnt++;
-        }
-        ~RefCountedRID() {
-            if (ref_refcnted==nullptr) return;
-            if (ref_refcnted->ref_cnt-- == 1) {
-                ref_refcnted->system->delete_rid(ref_refcnted->rid);
-                delete ref_refcnted;
-            }
-        }
-        operator RID() const {
-            return rid_refcnted->rid;
-        }
-        RID asRID() const {
-            return rid_refcnted->rid;
-        }
-    };
 
     RenderingServer* rendering_server;
     RID scenario;//3D
@@ -204,7 +206,10 @@ public:
     void set_viewport(Viewport* new_viewport);
 
     template<class T>
-    void create() {}
+    T&& create() {
+        static_assert(::std::is_base_of_v<RBXRenderObject,T>, "The class is not creatable by the rendering system.");
+        return T();
+    }
 
     template <>
     RBXMeshPart&& create<RBXMeshPart>();

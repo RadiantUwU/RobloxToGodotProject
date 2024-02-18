@@ -114,11 +114,11 @@ public:
 };
 
 enum Technology {
-    Legacy,
-    Voxel,
-    Compatibility,
-    ShadowMap,
-    Future
+    Lighting_Legacy,
+    Lighting_Voxel,
+    Lighting_Compatibility,
+    Lighting_ShadowMap,
+    Lighting_Future
 };
 
 struct Axes {
@@ -221,13 +221,15 @@ struct RBXVector3 {
         const double m = getMagnitude();
         return {X/m,Y/m/Z/m};
     }
-    static constexpr RBXVector3 ONE = {1,1,1};
-    static constexpr RBXVector3 ZERO = {0,0,0};
     // TODO: other stuff
 };
 struct CFrame {
-    double R00,R10,R20,R01,R11,R21,R02,R12,R22,X,Y,Z = 0;
-    CFrame()=default;
+    double R00=0,R10=0,R20=0,R01=0,R11=0,R21=0,R02=0,R12=0,R22=0,X=0,Y=0,Z=0;
+    CFrame() {};
+    CFrame(double R00,double R10,double R20,double R01,double R11,double R21,double R02,double R12,double R22,double X,double Y,double Z)
+        : 
+        R00(R00), R10(R10), R20(R20), R01(R01), R11(R11), R21(R21), R02(R02), R12(R12), R22(R22), X(X), Y(Y), Z(Z)
+    {}
     CFrame(RBXVector3 pos) {
         X=pos.X; Y=pos.Y; Z=pos.Z; 
     }
@@ -292,7 +294,14 @@ struct ColorSequence {
         Keypoints = keypoints;
     }
 };
-
+enum NormalId {
+    NormalId_Right,
+    NormalId_Top,
+    NormalId_Back,
+    NormalId_Left,
+    NormalId_Bottom,
+    NormalId_Front
+};
 
 };
 #endif
