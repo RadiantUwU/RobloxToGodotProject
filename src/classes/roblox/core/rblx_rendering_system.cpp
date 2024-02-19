@@ -118,7 +118,6 @@ RBXRenderingSystem::~RBXRenderingSystem() {
         rendering_server->free_rid(rid);
     }
     rendering_server->free_rid(workspace_instance);
-    rendering_server->free_rid(environment);
 }
 void RBXRenderingSystem::add_rid(RID rid) {
     assert(!rids.has(rid));
@@ -170,6 +169,66 @@ void RBXRenderingSystem::load_materials() {
     "   SPECULAR=reflectance;"
     "}"
     );
+}
+void RBXRenderingSystem::load_meshes() {
+    cube = rendering_server->mesh_create();
+    add_rid(cube);
+    Array cube_array,cube_point_array;
+
+    cube_point_array.append(Vector3(-0.5f,-0.5f,-0.5f));
+    cube_point_array.append(Vector3(-0.5f,-0.5f, 0.5f));
+    cube_point_array.append(Vector3(-0.5f, 0.5f, 0.5f));
+
+    cube_point_array.append(Vector3(-0.5f,-0.5f, 0.5f));
+    cube_point_array.append(Vector3(-0.5f, 0.5f, 0.5f));
+    cube_point_array.append(Vector3(-0.5f, 0.5f,-0.5f));
+
+    cube_point_array.append(Vector3( 0.5f,-0.5f,-0.5f));
+    cube_point_array.append(Vector3( 0.5f,-0.5f, 0.5f));
+    cube_point_array.append(Vector3( 0.5f, 0.5f,-0.5f));
+
+    cube_point_array.append(Vector3( 0.5f,-0.5f, 0.5f));
+    cube_point_array.append(Vector3( 0.5f, 0.5f, 0.5f));
+    cube_point_array.append(Vector3( 0.5f, 0.5f,-0.5f));
+
+    cube_point_array.append(Vector3(-0.5f,-0.5f,-0.5f));
+    cube_point_array.append(Vector3( 0.5f,-0.5f,-0.5f));
+    cube_point_array.append(Vector3( 0.5f, 0.5f,-0.5f));
+    
+    cube_point_array.append(Vector3(-0.5f,-0.5f,-0.5f));
+    cube_point_array.append(Vector3( 0.5f, 0.5f,-0.5f));
+    cube_point_array.append(Vector3(-0.5f, 0.5f,-0.5f));
+    
+    cube_point_array.append(Vector3(-0.5f,-0.5f, 0.5f));
+    cube_point_array.append(Vector3( 0.5f,-0.5f, 0.5f));
+    cube_point_array.append(Vector3( 0.5f, 0.5f, 0.5f));
+    
+    cube_point_array.append(Vector3(-0.5f,-0.5f, 0.5f));
+    cube_point_array.append(Vector3( 0.5f, 0.5f, 0.5f));
+    cube_point_array.append(Vector3(-0.5f, 0.5f, 0.5f));
+    
+    cube_point_array.append(Vector3(-0.5f,-0.5f,-0.5f));
+    cube_point_array.append(Vector3(-0.5f,-0.5f, 0.5f));
+    cube_point_array.append(Vector3( 0.5f,-0.5f, 0.5f));
+    
+    cube_point_array.append(Vector3(-0.5f,-0.5f,-0.5f));
+    cube_point_array.append(Vector3( 0.5f,-0.5f, 0.5f));
+    cube_point_array.append(Vector3( 0.5f,-0.5f,-0.5f));
+    
+    cube_point_array.append(Vector3(-0.5f, 0.5f,-0.5f));
+    cube_point_array.append(Vector3(-0.5f, 0.5f, 0.5f));
+    cube_point_array.append(Vector3( 0.5f, 0.5f, 0.5f));
+    
+    cube_point_array.append(Vector3(-0.5f, 0.5f,-0.5f));
+    cube_point_array.append(Vector3( 0.5f, 0.5f, 0.5f));
+    cube_point_array.append(Vector3( 0.5f, 0.5f,-0.5f));
+
+    cube_array.append(cube_point_array);
+    rendering_server->mesh_add_surface_from_arrays(
+            cube,
+            RenderingServer::PRIMITIVE_TRIANGLES,
+            cube_array
+        );
 }
 
 RBXRenderBasePart::RBXRenderBasePart(RBXRenderBasePart&& o) : RBXRenderObject((RBXRenderObject&&)o) {
