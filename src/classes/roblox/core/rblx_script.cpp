@@ -160,7 +160,7 @@ void BaseScript::setEnable(bool enable, bool now) {
         ctx.new_thread(0, this);
 
         ctx.push_ref(threads_ref);
-        ctx.push_value(-1);
+        ctx.push_value(-2);
         ctx.push_object(true);
         ctx.rawset(-3);
         ctx.pop_stack(1);
@@ -187,6 +187,8 @@ void BaseScript::setEnable(bool enable, bool now) {
             luau_context for_loop_closure = L;
             iter = ctx.rawiter(-1,iter);
             if (iter == -1) return;
+            ctx.pop_stack(1);
+            ctx.push_value(-1);
             ctx.push_object(ctx.get_task_scheduler()->lua_task_cancel,"task::cancel",-2);
             ctx.call(1, 0);
         }

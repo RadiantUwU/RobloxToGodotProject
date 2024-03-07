@@ -52,8 +52,12 @@ void Instance::destroy() {
 }
 void Instance::destroy_children() {
     Vector<Instance*> children_clone = children;
+    luau_context lc = VM->main_synchronized;
+    lc.raise_gc_guard();
     for (Instance* i : children_clone) {
-        i->destroy();
+        i->setParent(nullptr);
+        lc.push_objects(VM->task->lua_task_defer, Instance::Destroy, i);
+        lc.call(2, 0);
     }
 }
 Instance* Instance::getParent() const {

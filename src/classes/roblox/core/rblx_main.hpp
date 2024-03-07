@@ -7,6 +7,7 @@
 #include <godot_cpp/templates/vector.hpp>
 #include <godot_cpp/variant/variant.hpp>
 #include <godot_cpp/variant/utility_functions.hpp>
+#include <godot_cpp/classes/viewport.hpp>
 #include <lua.h>
 #include <lualib.h>
 #include <assert.h>
@@ -77,6 +78,7 @@ protected:
     luau_State *ls;
     int64_t last_stack_size;
     int thr_ref;
+    bool garbage_collector_guard = false;
     friend class LuaObject;
 public:
     #pragma region USERDATA
@@ -169,7 +171,7 @@ public:
         getregistry("LUAU_STATE");
         ls = (luau_State*)lua_tolightuserdata(L, -1);
         lua_pop(L, 1);
-        ls->mtx.lock();
+        if (ls != nullptr) ls->mtx.lock();
         last_stack_size = lua_gettop(L);
         lua_pushthread(L);
         thr_ref = lua_ref(L, -1);
@@ -194,9 +196,10 @@ public:
         lua_pop(L, 1);
     }
     ~luau_context() {
+        if (garbage_collector_guard) gc_operation(LUA_GCRESTART);
         clear_stack();
         lua_unref(L, thr_ref);
-        ls->mtx.unlock();
+        if (ls != nullptr) ls->mtx.unlock();
     }
     RBLX_INLINE void expect_empty_stack() {
         last_stack_size = 0;
@@ -684,6 +687,12 @@ public:
     int compile(const char* fname, LuaString code, int env_idx = 0);
 
     RBLX_INLINE luau_State* get_luau_state() { return ls; }
+
+    RBLX_INLINE int gc_operation(int what, int data=0) { return lua_gc(L, what, data); }
+    RBLX_INLINE void raise_gc_guard() {
+        garbage_collector_guard = gc_operation(LUA_GCISRUNNING);
+        if (garbage_collector_guard) gc_operation(LUA_GCSTOP);
+    }
 };
 
 class luau_function_context : public luau_context {
@@ -910,6 +919,8 @@ public:
 
     bool resume_cycle(lua_State *L);
     bool resume_cycle(luau_State *L);
+
+    void on_frame();
 };
 enum RBLX_VMRunContext {
     RUNCTXT_CORE,
@@ -1006,7 +1017,7 @@ class RobloxVMInstance final {
         }
         return 0;
     }
-
+    static bool is_in_editor();
 public:
     RobloxVMInstance(lua_State* main);
     ~RobloxVMInstance();

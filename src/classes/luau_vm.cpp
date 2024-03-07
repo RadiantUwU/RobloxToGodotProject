@@ -5,10 +5,12 @@
 #include <godot_cpp/variant/variant.hpp>
 #include <godot_cpp/variant/array.hpp>
 #include <godot_cpp/classes/node.hpp>
+#include <godot_cpp/core/error_macros.hpp>
 #include <lua.h>
 #include <lualib.h>
 #include <utils.h>
 #include "roblox/core/rblx_main.hpp"
+#include "roblox/core/rblx_rendering_system.hpp"
 
 
 
@@ -86,10 +88,21 @@ void LuauVM::_bind_methods() {
 
     ClassDB::bind_method(D_METHOD("open_libraries", "libraries"), &LuauVM::open_libraries);
     ClassDB::bind_method(D_METHOD("open_all_libraries"), &LuauVM::open_all_libraries);
+    ClassDB::bind_method(D_METHOD("set_viewport", "viewport"), &LuauVM::set_viewport);
 
     _bind_passthrough_methods();
 
     ADD_SIGNAL(MethodInfo("stdout", PropertyInfo(Variant::STRING, "message")));
+}
+
+void LuauVM::set_viewport(Viewport* viewport) {
+    ERR_FAIL_NULL(vm);
+    vm->renderer->set_viewport(viewport);
+}
+
+void LuauVM::_process(double delta) {
+    ERR_FAIL_NULL(vm);
+    vm->task->on_frame();
 }
 
 int metatable_object__eq(lua_State *L) {
@@ -254,7 +267,7 @@ int LuauVM::do_string(const String &code, const String &chunkname) {
 #endif
     TaskScheduler* sched = vm->task;
     while (sched->resume_cycle(vm->main_synchronized)) {}
-#ifndef NDEBUG
+#ifndef NDEBUG 
     ctx.print_stack();
     ctx.print_stack_absolute();
 #endif

@@ -1,6 +1,7 @@
 #pragma once
 
 #include <godot_cpp/classes/node.hpp>
+#include <godot_cpp/classes/viewport.hpp>
 #include <godot_cpp/core/class_db.hpp>
 #include <lua.h>
 #include <lualib.h>
@@ -19,7 +20,7 @@ namespace godot {
 
 class LuauVM : public Node {
     GDCLASS(LuauVM, Node)
-    RobloxVMInstance* vm;
+    RobloxVMInstance* vm = nullptr;
 private:
     lua_State* L;
     void create_metatables();
@@ -44,6 +45,9 @@ public:
 
     int64_t get_memory_usage_bytes();
 
+    void set_viewport(Viewport* viewport);
+
+    void _process(double delta) override;
 
     // Bindings
 

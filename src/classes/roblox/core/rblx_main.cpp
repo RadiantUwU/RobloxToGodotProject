@@ -2,10 +2,14 @@
 #include <lualib.h>
 #include <luacode.h>
 #include <cstdlib>
+#include <godot_cpp/classes/engine.hpp>
+#include <godot_cpp/variant/string.hpp>
+#include "rblx_basic_types.hpp"
 #include "rblx_main.hpp"
 #include "rblx_instance.hpp"
 #include "rblx_events.hpp"
 #include "rblx_debug.hpp"
+#include "rblx_rendering_system.hpp"
 #include "rblx_script.hpp"
 
 namespace godot {
@@ -488,18 +492,44 @@ void RobloxVMInstance::register_registry(lua_State *L) {
     ctx.setregistry("tonumber");
 }
 RobloxVMInstance::RobloxVMInstance(lua_State *main) {
+    lua_gc(main, LUA_GCSTOP, 0);
     main_synchronized = new(memalloc(sizeof(luau_State))) luau_State(this, main);
     task = new(memalloc(sizeof(TaskScheduler))) TaskScheduler(this);
-    new(main_synchronized) luau_State(this, main);
     register_types(main);
     register_genv(main);
     register_registry(main);
-#ifndef NDEBUG
+
+    renderer = new(memalloc(sizeof(RBXRenderingSystem))) RBXRenderingSystem();
+
+    {
+        RBXPartRender* part = new (memalloc(sizeof(RBXPartRender))) RBXPartRender(renderer->create<RBXPartRender>());
+        part->set_part_type(RBXPartRender::TYPE_BLOCK);
+        (*part).resize(RBXVector3::new_(1,1,1));
+        (*part).set_color(Color3(1,1,1));
+        (*part).set_position(CFrame(RBXVector3::new_(0,0,0)));
+        (*part).set_visible(true);
+    }
+
+#if !defined(NDEBUG) || defined(DEBUG_ENABLED)
+#pragma message("Debug builds enable core security context for all scripts, you should never put this in release as this may be a security vulnerability.")
     context = RUNCTXT_CORE; // Allow core access when in debug mode
 #endif
 }
+bool RobloxVMInstance::is_in_editor() {
+    return Engine::get_singleton()->is_editor_hint();
+}
 RobloxVMInstance::~RobloxVMInstance() {
+#define fuck_around try
+#define find_out catch
     task->~TaskScheduler();
+    renderer->~RBXRenderingSystem();
+    fuck_around {
+        main_synchronized->~luau_State();
+    } find_out (::std::exception err) {
+        String s = "Failed to deallocate object luau_state: ";
+        ERR_PRINT_ED(s+err.what());
+    }
+    memfree(renderer);
     memfree(task);
     memfree(main_synchronized);
 }
@@ -797,6 +827,14 @@ bool TaskScheduler::resume_cycle(luau_State *L) {
     ctx.getregistry("TASK_await_defer");
     if (ctx.len(-1) > 0) return true;
     return false;
+}
+void TaskScheduler::on_frame() {
+    // TODO: Task scheduler on frame to be fully implemented...
+    luau_context ctx = vm->main_synchronized;
+    ctx.gc_operation(LUA_GCRESTART);
+    ctx.gc_operation(LUA_GCSTEP);
+    ctx.gc_operation(LUA_GCSTOP);
+    while (resume_cycle(vm->main_synchronized)) {}
 }
 int TaskScheduler::lua_task_error_handler(lua_State *L) {
     luau_function_context fn = L;

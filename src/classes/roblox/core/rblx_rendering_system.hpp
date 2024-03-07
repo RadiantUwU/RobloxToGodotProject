@@ -60,48 +60,48 @@ public:
 class RBXRenderObject {
 protected:
     RID instance;
+    char* refcount = nullptr;
     RBXRenderingSystem* rblx_renderer;
     RBXRenderObject()=default;
     RenderingServer* get_server();
 public:
-    RBXRenderObject(RBXRenderObject&&);
-    RBXRenderObject& operator=(RBXRenderObject&&);
+    RBXRenderObject(RBXRenderObject& obj);
     ~RBXRenderObject();
     virtual void set_position(CFrame position);
     void set_visible(bool visible);
 };
+//TODO: proper deallocation for all these subclasses
 class RBXRenderBasePart : public RBXRenderObject {
 protected:
     RBXVector3 size = {1,1,1};
+    RBXRenderBasePart() : RBXRenderObject() {}
 public:
-    RBXRenderBasePart(RBXRenderBasePart&&);
-    RBXRenderBasePart& operator=(RBXRenderBasePart&&);
-    virtual void resize(RBXVector3 new_size) {
-        size = new_size;
-    }
-    virtual void set_reflectance(float refl) {
-        get_server()->instance_geometry_set_shader_parameter(instance, "reflectance", refl);
-    };
-    virtual void set_transparency(float transparency) {
-        get_server()->instance_geometry_set_transparency(instance, transparency);
-    };
-    virtual void set_color(Color3 color) {
-        Vector3 v3 = Vector3(color.R,color.G,color.B);
-        get_server()->instance_geometry_set_shader_parameter(instance, "color", v3);
-    }
+    RBXRenderBasePart(RBXRenderBasePart&);
+    virtual void resize(RBXVector3 new_size) = 0;
+    virtual void set_reflectance(float refl) = 0;
+    virtual void set_transparency(float transparency) = 0;
+    virtual void set_color(Color3 color) = 0;
     //virtual void set_material(RBXMaterial material) = 0;
 };
 class RBXMeshPart : public RBXRenderBasePart {
     rblx_internal_rendering_system::RefCountedRID mesh;
+    friend class RBXRenderingSystem;
+protected:
+    RBXMeshPart() : RBXRenderBasePart() {}
 public:
-    RBXMeshPart(RBXMeshPart&&);
-    RBXMeshPart& operator=(RBXMeshPart&&);
+    RBXMeshPart(RBXMeshPart&);
     void set_mesh(rblx_internal_rendering_system::RefCountedRID rid);
+    void resize(RBXVector3 new_size) override;
+    void set_reflectance(float refl) override;
+    void set_transparency(float transparency) override;
+    void set_color(Color3 color) override;
 };
 class RBXPartRender : public RBXRenderBasePart {
+protected:
+    friend class RBXRenderingSystem;
+    RBXPartRender() : RBXRenderBasePart() {}
 public:
-    RBXPartRender(RBXPartRender&&);
-    RBXPartRender& operator=(RBXPartRender&&);
+    RBXPartRender(RBXPartRender&);
     enum PartType {
         TYPE_BLOCK,
         TYPE_WEDGE,
@@ -110,13 +110,16 @@ public:
         TYPE_CORNERWEDGE
     };
     void set_part_type(PartType type);
+    void resize(RBXVector3 new_size) override;
+    void set_reflectance(float refl) override;
+    void set_transparency(float transparency) override;
+    void set_color(Color3 color) override;
 };
 class RBXLight : public RBXRenderObject {
 protected:
     RID light_instance;
 public:
-    RBXLight(RBXLight&&);
-    RBXLight& operator=(RBXLight&&);
+    RBXLight(RBXLight&);
     virtual void create_light_instance() = 0;
     
     void set_brightness(float brightness);
@@ -208,21 +211,21 @@ public:
     void set_viewport(Viewport* new_viewport);
 
     template<class T>
-    T&& create() {
+    T create() {
         static_assert(::std::is_base_of_v<RBXRenderObject,T>, "The class is not creatable by the rendering system.");
         return T();
     }
 
     template <>
-    RBXMeshPart&& create<RBXMeshPart>();
+    RBXMeshPart create<RBXMeshPart>();
     template <>
-    RBXPartRender&& create<RBXPartRender>();
+    RBXPartRender create<RBXPartRender>();
     template <>
-    RBXPointLight&& create<RBXPointLight>();
+    RBXPointLight create<RBXPointLight>();
     template <>
-    RBXSpotLight&& create<RBXSpotLight>();
+    RBXSpotLight create<RBXSpotLight>();
     template <>
-    RBXSurfaceLight&& create<RBXSurfaceLight>();
+    RBXSurfaceLight create<RBXSurfaceLight>();
 };
 
 

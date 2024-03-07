@@ -6,8 +6,11 @@
 #include <godot_cpp/variant/color.hpp>
 #include <godot_cpp/variant/basis.hpp>
 #include <godot_cpp/variant/transform3d.hpp>
+#include <godot_cpp/classes/array_mesh.hpp>
+#include <godot_cpp/classes/box_mesh.hpp>
 
 #include "rblx_basic_types.hpp"
+#include "rblx_debug.hpp"
 #include "rblx_rendering_system.hpp"
 #include "rblx_main.hpp"
 
@@ -83,19 +86,17 @@ rblx_internal_rendering_system::RefCountedRID::~RefCountedRID() {
     }
 }
 
-RBXRenderObject::RBXRenderObject(RBXRenderObject&& o) {
+RBXRenderObject::RBXRenderObject(RBXRenderObject& o) {
+    RBLX_PRINT_VERBOSE("Copying render object");
     this->rblx_renderer = o.rblx_renderer;
     this->instance = o.instance;
     o.rblx_renderer = nullptr; // make the other object useless.
-}
-RBXRenderObject& RBXRenderObject::operator=(RBXRenderObject&& o) {
-    this->rblx_renderer = o.rblx_renderer;
-    this->instance = o.instance;
-    o.rblx_renderer = nullptr; // make the other object useless.
-    return *this;
 }
 RBXRenderObject::~RBXRenderObject() {
-    if (rblx_renderer != nullptr) rblx_renderer->delete_rid(instance);
+    if (rblx_renderer != nullptr && instance.is_valid()) {
+        RBLX_PRINT_VERBOSE("Deallocating render object!");
+        rblx_renderer->delete_rid(instance);
+    }
 }
 RenderingServer* RBXRenderObject::get_server() {
     return rblx_renderer->rendering_server;
@@ -145,19 +146,20 @@ void RBXRenderingSystem::set_viewport(Viewport* viewport) {
     Ref<World2D> world2d = viewport->get_world_2d();
     canvas = world2d->get_canvas();
     scenario = world3d->get_scenario();
-    if (environment != nullptr) delete_rid(environment);
+    if (environment.is_valid()) delete_rid(environment);
     environment = rendering_server->environment_create();
     add_rid(environment);
     rendering_server->instance_set_scenario(workspace_instance, scenario);
 }
 void RBXRenderingSystem::render() {
-    assert(enabled);
+    if (!enabled) return;
     rendering_server->force_draw();
 }
 void RBXRenderingSystem::load_materials() {
-    smooth_plastic = rendering_server->shader_create();
-    add_rid(smooth_plastic);
-    rendering_server->shader_set_code(smooth_plastic,
+    RID shader;
+    shader = rendering_server->shader_create();
+    add_rid(shader);
+    rendering_server->shader_set_code(shader,
     "shader_type spatial;"
     "render_mode diffuse_toon, specular_toon;"
     "uniform vec3 color : source_color;"
@@ -166,97 +168,71 @@ void RBXRenderingSystem::load_materials() {
     "   ALBEDO=color;"
     "   ROUGHNESS=0.2;"
     "   METALLIC=reflectance;"
-    "   SPECULAR=reflectance;"
+    "   SPECULAR=.5+.5*reflectance;"
     "}"
     );
+    smooth_plastic = rendering_server->material_create();
+    rendering_server->material_set_shader(smooth_plastic, shader);
+    add_rid(smooth_plastic);
 }
 void RBXRenderingSystem::load_meshes() {
     cube = rendering_server->mesh_create();
     add_rid(cube);
-    Array cube_array,cube_point_array;
-
-    cube_point_array.append(Vector3(-0.5f,-0.5f,-0.5f));
-    cube_point_array.append(Vector3(-0.5f,-0.5f, 0.5f));
-    cube_point_array.append(Vector3(-0.5f, 0.5f, 0.5f));
-
-    cube_point_array.append(Vector3(-0.5f,-0.5f, 0.5f));
-    cube_point_array.append(Vector3(-0.5f, 0.5f, 0.5f));
-    cube_point_array.append(Vector3(-0.5f, 0.5f,-0.5f));
-
-    cube_point_array.append(Vector3( 0.5f,-0.5f,-0.5f));
-    cube_point_array.append(Vector3( 0.5f,-0.5f, 0.5f));
-    cube_point_array.append(Vector3( 0.5f, 0.5f,-0.5f));
-
-    cube_point_array.append(Vector3( 0.5f,-0.5f, 0.5f));
-    cube_point_array.append(Vector3( 0.5f, 0.5f, 0.5f));
-    cube_point_array.append(Vector3( 0.5f, 0.5f,-0.5f));
-
-    cube_point_array.append(Vector3(-0.5f,-0.5f,-0.5f));
-    cube_point_array.append(Vector3( 0.5f,-0.5f,-0.5f));
-    cube_point_array.append(Vector3( 0.5f, 0.5f,-0.5f));
-    
-    cube_point_array.append(Vector3(-0.5f,-0.5f,-0.5f));
-    cube_point_array.append(Vector3( 0.5f, 0.5f,-0.5f));
-    cube_point_array.append(Vector3(-0.5f, 0.5f,-0.5f));
-    
-    cube_point_array.append(Vector3(-0.5f,-0.5f, 0.5f));
-    cube_point_array.append(Vector3( 0.5f,-0.5f, 0.5f));
-    cube_point_array.append(Vector3( 0.5f, 0.5f, 0.5f));
-    
-    cube_point_array.append(Vector3(-0.5f,-0.5f, 0.5f));
-    cube_point_array.append(Vector3( 0.5f, 0.5f, 0.5f));
-    cube_point_array.append(Vector3(-0.5f, 0.5f, 0.5f));
-    
-    cube_point_array.append(Vector3(-0.5f,-0.5f,-0.5f));
-    cube_point_array.append(Vector3(-0.5f,-0.5f, 0.5f));
-    cube_point_array.append(Vector3( 0.5f,-0.5f, 0.5f));
-    
-    cube_point_array.append(Vector3(-0.5f,-0.5f,-0.5f));
-    cube_point_array.append(Vector3( 0.5f,-0.5f, 0.5f));
-    cube_point_array.append(Vector3( 0.5f,-0.5f,-0.5f));
-    
-    cube_point_array.append(Vector3(-0.5f, 0.5f,-0.5f));
-    cube_point_array.append(Vector3(-0.5f, 0.5f, 0.5f));
-    cube_point_array.append(Vector3( 0.5f, 0.5f, 0.5f));
-    
-    cube_point_array.append(Vector3(-0.5f, 0.5f,-0.5f));
-    cube_point_array.append(Vector3( 0.5f, 0.5f, 0.5f));
-    cube_point_array.append(Vector3( 0.5f, 0.5f,-0.5f));
-
-    cube_array.append(cube_point_array);
+    Array cube_array;
+    Ref<BoxMesh> boxmesh;
+    boxmesh.instantiate();
+    cube_array = boxmesh->surface_get_arrays(0);
     rendering_server->mesh_add_surface_from_arrays(
             cube,
             RenderingServer::PRIMITIVE_TRIANGLES,
             cube_array
         );
 }
+template<>
+RBXMeshPart RBXRenderingSystem::create<RBXMeshPart>() {
+    RBXMeshPart meshpart;
+    meshpart.rblx_renderer = this;
+    meshpart.instance = rendering_server->instance_create();
+    rendering_server->instance_set_scenario(meshpart.instance,scenario);
+    rendering_server->instance_set_visibility_parent(meshpart.instance,workspace_instance);
+    return meshpart;
+}
+template<>
+RBXPartRender RBXRenderingSystem::create<RBXPartRender>() {
+    RBXPartRender part;
+    part.rblx_renderer = this;
+    part.instance = rendering_server->instance_create();
+    rendering_server->instance_set_scenario(part.instance,scenario);
+    rendering_server->instance_set_visibility_parent(part.instance,workspace_instance);
+    rendering_server->instance_geometry_set_material_override(part.instance, smooth_plastic);
+    return part;
+}
 
-RBXRenderBasePart::RBXRenderBasePart(RBXRenderBasePart&& o) : RBXRenderObject((RBXRenderObject&&)o) {
+RBXRenderBasePart::RBXRenderBasePart(RBXRenderBasePart& o) : RBXRenderObject((RBXRenderObject&)o) {
     this->size = o.size;
 }
-RBXRenderBasePart& RBXRenderBasePart::operator=(RBXRenderBasePart&& o) {
-    ((RBXRenderObject&)*this) = (RBXRenderObject&&)o; // call super method
-    this->size = o.size;
-    return *this;
-}
 
-RBXMeshPart::RBXMeshPart(RBXMeshPart&& o) : RBXRenderBasePart((RBXRenderBasePart&&)o) {
+RBXMeshPart::RBXMeshPart(RBXMeshPart& o) : RBXRenderBasePart((RBXRenderBasePart&)o) {
     this->mesh = o.mesh;
-}
-RBXMeshPart& RBXMeshPart::operator=(RBXMeshPart&& o) {
-    ((RBXRenderBasePart&)*this) = (RBXRenderBasePart&&)o; // call super method
-    this->mesh = o.mesh;
-    return *this;
 }
 void RBXMeshPart::set_mesh(rblx_internal_rendering_system::RefCountedRID rid) {
     rblx_renderer->rendering_server->instance_set_base(instance,rid);
 }
-
-RBXPartRender::RBXPartRender(RBXPartRender&& o) : RBXRenderBasePart((RBXRenderBasePart&&)o) {}
-RBXPartRender& RBXPartRender::operator=(RBXPartRender&& o) {
-    ((RBXRenderBasePart&)*this) = (RBXRenderBasePart&&)o; // call super method
-    return *this;
+void RBXMeshPart::resize(RBXVector3 new_size) {
+    size = new_size;
 }
+void RBXMeshPart::set_reflectance(float refl) {
+    get_server()->instance_geometry_set_shader_parameter(instance, "reflectance", refl);
+}
+void RBXMeshPart::set_transparency(float transparency) {
+    get_server()->instance_geometry_set_transparency(instance, transparency);
+}
+void RBXMeshPart::set_color(Color3 color) {
+    Vector3 v3 = Vector3(color.R,color.G,color.B);
+    get_server()->instance_geometry_set_shader_parameter(instance, "color", v3);
+}
+
+RBXPartRender::RBXPartRender(RBXPartRender& o) : RBXRenderBasePart((RBXRenderBasePart&)o) {}
 void RBXPartRender::set_part_type(RBXPartRender::PartType part_type) {
     switch (part_type) {
     case RBXPartRender::TYPE_BLOCK:
@@ -275,6 +251,19 @@ void RBXPartRender::set_part_type(RBXPartRender::PartType part_type) {
         this->rblx_renderer->rendering_server->instance_set_base(instance,this->rblx_renderer->corner_wedge);
         break;
     }
+}
+void RBXPartRender::resize(RBXVector3 new_size) {
+    size = new_size;
+}
+void RBXPartRender::set_reflectance(float refl) {
+    get_server()->instance_geometry_set_shader_parameter(instance, "reflectance", refl);
+}
+void RBXPartRender::set_transparency(float transparency) {
+    get_server()->instance_geometry_set_transparency(instance, transparency);
+}
+void RBXPartRender::set_color(Color3 color) {
+    Vector3 v3 = Vector3(color.R,color.G,color.B);
+    get_server()->instance_geometry_set_shader_parameter(instance, "color", v3);
 }
 
 void RBXLight::set_brightness(float brightness) {
