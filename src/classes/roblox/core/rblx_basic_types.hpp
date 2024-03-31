@@ -231,7 +231,7 @@ struct CFrame {
         R00(R00), R10(R10), R20(R20), R01(R01), R11(R11), R21(R21), R02(R02), R12(R12), R22(R22), X(X), Y(Y), Z(Z)
     {}
     CFrame(RBXVector3 pos) {
-        X=pos.X; Y=pos.Y; Z=pos.Z; 
+        X=pos.X; Y=pos.Y; Z=pos.Z; R00=1; R11=1; R22=1;
     }
     CFrame(double x, double y, double z) {
         X=x; Y=y; Z=z; 

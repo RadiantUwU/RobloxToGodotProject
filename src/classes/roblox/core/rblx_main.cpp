@@ -501,15 +501,6 @@ RobloxVMInstance::RobloxVMInstance(lua_State *main) {
 
     renderer = new(memalloc(sizeof(RBXRenderingSystem))) RBXRenderingSystem();
 
-    {
-        RBXPartRender* part = new (memalloc(sizeof(RBXPartRender))) RBXPartRender(renderer->create<RBXPartRender>());
-        part->set_part_type(RBXPartRender::TYPE_BLOCK);
-        (*part).resize(RBXVector3::new_(1,1,1));
-        (*part).set_color(Color3(1,1,1));
-        (*part).set_position(CFrame(RBXVector3::new_(0,0,0)));
-        (*part).set_visible(true);
-    }
-
 #if !defined(NDEBUG) || defined(DEBUG_ENABLED)
 #pragma message("Debug builds enable core security context for all scripts, you should never put this in release as this may be a security vulnerability.")
     context = RUNCTXT_CORE; // Allow core access when in debug mode

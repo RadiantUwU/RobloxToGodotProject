@@ -99,12 +99,15 @@ RBXRenderObject::~RBXRenderObject() {
     }
 }
 RenderingServer* RBXRenderObject::get_server() {
+    assert(rblx_renderer != nullptr);
     return rblx_renderer->rendering_server;
 }
 void RBXRenderObject::set_position(CFrame position) {
+    assert(rblx_renderer != nullptr);
     rblx_renderer->rendering_server->instance_set_transform(instance,to_godot_transform(position));
 }
 void RBXRenderObject::set_visible(bool visible) {
+    assert(rblx_renderer != nullptr);
     rblx_renderer->rendering_server->instance_set_visible(instance, visible);
 }
 
@@ -134,22 +137,44 @@ void RBXRenderingSystem::enable() {
     enabled = true;
     rendering_server->scenario_set_environment(scenario, environment);
     rendering_server->instance_set_visible(workspace_instance, true);
+    RBLX_PRINT_VERBOSE("Enabled rblx rendering system!");
 }
 void RBXRenderingSystem::disable() {
     assert(enabled);
     enabled = false;
     rendering_server->scenario_set_environment(scenario,RID());
     rendering_server->instance_set_visible(workspace_instance, false);
+    RBLX_PRINT_VERBOSE("Disabled rblx rendering system!");
 }
 void RBXRenderingSystem::set_viewport(Viewport* viewport) {
-    Ref<World3D> world3d = viewport->get_world_3d();
-    Ref<World2D> world2d = viewport->get_world_2d();
+    Ref<World3D> world3d = viewport->find_world_3d();
+    Ref<World2D> world2d = viewport->find_world_2d();
     canvas = world2d->get_canvas();
     scenario = world3d->get_scenario();
     if (environment.is_valid()) delete_rid(environment);
     environment = rendering_server->environment_create();
     add_rid(environment);
     rendering_server->instance_set_scenario(workspace_instance, scenario);
+    /*{ //so mesh is valid, scenario is also valid, is the workspace instance valid?
+        RID cube_instance = rendering_server->instance_create();
+        rendering_server->instance_set_scenario(cube_instance, scenario);
+        rendering_server->instance_set_visibility_parent(cube_instance, workspace_instance);
+        rendering_server->instance_geometry_set_material_override(cube_instance, smooth_plastic);
+        rendering_server->instance_set_base(cube_instance, cube);
+        rendering_server->instance_geometry_set_shader_parameter(cube_instance, "color", Color(1,0,1));
+        rendering_server->instance_set_transform(cube_instance, to_godot_transform(RBXVector3::new_(0,0,0)));
+        rendering_server->instance_set_visible(cube_instance, true);
+        Color color = rendering_server->instance_geometry_get_shader_parameter(cube_instance, "color");
+        RBLX_PRINT_VERBOSE(color.r, ' ', color.g, ' ', color.b, ' ', color.a);
+    }*/
+    {
+        RBXPartRender* part = new (memalloc(sizeof(RBXPartRender))) RBXPartRender(this->create<RBXPartRender>());
+        part->set_part_type(RBXPartRender::TYPE_BLOCK);
+        part->resize(RBXVector3::new_(1,1,1));
+        part->set_color(Color3(1,0,1));
+        part->set_position(CFrame(RBXVector3::new_(0,0,0)));
+        part->set_visible(true);
+    }
 }
 void RBXRenderingSystem::render() {
     if (!enabled) return;
@@ -161,12 +186,12 @@ void RBXRenderingSystem::load_materials() {
     add_rid(shader);
     rendering_server->shader_set_code(shader,
     "shader_type spatial;"
-    "render_mode diffuse_toon, specular_toon;"
-    "uniform vec3 color : source_color;"
-    "uniform float reflectance : hint_range(0,1);"
+    "render_mode diffuse_toon, specular_toon, cull_disabled;"
+    "instance uniform vec3 color : source_color;"
+    "instance uniform float reflectance : hint_range(0,1);"
     "void fragment() {"
     "   ALBEDO=color;"
-    "   ROUGHNESS=0.2;"
+    "   ROUGHNESS=0.1;"
     "   METALLIC=reflectance;"
     "   SPECULAR=.5+.5*reflectance;"
     "}"
@@ -181,6 +206,7 @@ void RBXRenderingSystem::load_meshes() {
     Array cube_array;
     Ref<BoxMesh> boxmesh;
     boxmesh.instantiate();
+    boxmesh->set_size(Vector3(1,1,1));
     cube_array = boxmesh->surface_get_arrays(0);
     rendering_server->mesh_add_surface_from_arrays(
             cube,

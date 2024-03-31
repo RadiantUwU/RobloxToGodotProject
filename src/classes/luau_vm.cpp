@@ -98,6 +98,7 @@ void LuauVM::_bind_methods() {
 void LuauVM::set_viewport(Viewport* viewport) {
     ERR_FAIL_NULL(vm);
     vm->renderer->set_viewport(viewport);
+    vm->renderer->enable();
 }
 
 void LuauVM::_process(double delta) {
