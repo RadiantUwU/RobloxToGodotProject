@@ -113,11 +113,18 @@ void RBXRenderObject::set_visible(bool visible) {
 
 RBXRenderingSystem::RBXRenderingSystem() {
     rendering_server = RenderingServer::get_singleton();
+    lighting = new (memalloc(sizeof(RBXLowLevelLighting))) RBXLowLevelLighting();
     workspace_instance = rendering_server->instance_create();
+
+    //rendering_server->global_shader_parameter_add("rblx_environment_diffuse_scale", rendering_server->GLOBAL_VAR_TYPE_FLOAT, 0);
+    rendering_server->global_shader_parameter_add("rblx_environment_specular_scale", rendering_server->GLOBAL_VAR_TYPE_FLOAT, 0);
+
     load_meshes();
     load_materials();
 }
 RBXRenderingSystem::~RBXRenderingSystem() {
+    lighting->~RBXLowLevelLighting();
+    memfree(lighting);
     for (RID& rid : rids) {
         rendering_server->free_rid(rid);
     }
@@ -155,19 +162,7 @@ void RBXRenderingSystem::set_viewport(Viewport* viewport) {
     environment = rendering_server->environment_create();
     add_rid(environment);
     rendering_server->instance_set_scenario(workspace_instance, scenario);
-    /*{ //so mesh is valid, scenario is also valid, is the workspace instance valid?
-        RID cube_instance = rendering_server->instance_create();
-        rendering_server->instance_set_scenario(cube_instance, scenario);
-        rendering_server->instance_set_visibility_parent(cube_instance, workspace_instance);
-        rendering_server->instance_geometry_set_material_override(cube_instance, smooth_plastic);
-        rendering_server->instance_set_base(cube_instance, cube);
-        rendering_server->instance_geometry_set_shader_parameter(cube_instance, "color", Color(1,0,1));
-        rendering_server->instance_set_transform(cube_instance, to_godot_transform(RBXVector3::new_(0,0,0)));
-        rendering_server->instance_set_visible(cube_instance, true);
-        Color color = rendering_server->instance_geometry_get_shader_parameter(cube_instance, "color");
-        RBLX_PRINT_VERBOSE(color.r, ' ', color.g, ' ', color.b, ' ', color.a);
-    }*/
-    {
+    { // testing of part rendering
         RBXPartRender* part = new (memalloc(sizeof(RBXPartRender))) RBXPartRender(this->create<RBXPartRender>());
         part->set_part_type(RBXPartRender::TYPE_BLOCK);
         part->resize(RBXVector3::new_(1,1,1));
@@ -233,6 +228,36 @@ RBXPartRender RBXRenderingSystem::create<RBXPartRender>() {
     rendering_server->instance_geometry_set_material_override(part.instance, smooth_plastic);
     return part;
 }
+template <>
+RBXSpotLight RBXRenderingSystem::create<RBXSpotLight>() {
+    RBXSpotLight light;
+    light.rblx_renderer = this;
+    light.instance = rendering_server->instance_create();
+    rendering_server->instance_set_scenario(light.instance,scenario);
+    rendering_server->instance_set_visibility_parent(light.instance,workspace_instance);
+    light.create_light_instance();
+    return light;
+}
+template <>
+RBXPointLight RBXRenderingSystem::create<RBXPointLight>() {
+    RBXPointLight light;
+    light.rblx_renderer = this;
+    light.instance = rendering_server->instance_create();
+    rendering_server->instance_set_scenario(light.instance,scenario);
+    rendering_server->instance_set_visibility_parent(light.instance,workspace_instance);
+    light.create_light_instance();
+    return light;
+}
+template <>
+RBXSurfaceLight RBXRenderingSystem::create<RBXSurfaceLight>() {
+    RBXSurfaceLight light;
+    light.rblx_renderer = this;
+    light.instance = rendering_server->instance_create();
+    rendering_server->instance_set_scenario(light.instance,scenario);
+    rendering_server->instance_set_visibility_parent(light.instance,workspace_instance);
+    light.create_light_instance();
+    return light;
+}
 
 RBXRenderBasePart::RBXRenderBasePart(RBXRenderBasePart& o) : RBXRenderObject((RBXRenderObject&)o) {
     this->size = o.size;
@@ -292,6 +317,11 @@ void RBXPartRender::set_color(Color3 color) {
     get_server()->instance_geometry_set_shader_parameter(instance, "color", v3);
 }
 
+RBXLight::~RBXLight() {
+    if (rblx_renderer != nullptr && light_instance.is_valid()) {
+        rblx_renderer->delete_rid(light_instance);
+    }
+}
 void RBXLight::set_brightness(float brightness) {
     get_server()->light_set_param(light_instance, RenderingServer::LIGHT_PARAM_ENERGY, brightness);
 }
@@ -334,5 +364,19 @@ void RBXSpotLight::set_position(CFrame position) {
         )));
 }
 
+RBXLowLevelLighting& RBXRenderingSystem::get_lighting() {
+    return *lighting;
+}
 
+void RBXLowLevelLighting::set_ambient_light(Color3 color) {
+    ambient_light = color;
+    rblx_renderer->rendering_server->environment_set_ambient_light(rblx_renderer->environment, ambient_light, 0, brightness, 1, 0);
+}
+void RBXLowLevelLighting::set_brightness(float brightness) {
+    this->brightness = brightness;
+    rblx_renderer->rendering_server->environment_set_ambient_light(rblx_renderer->environment, ambient_light, 0, brightness, 1, 0);
+}
+void RBXLowLevelLighting::set_environment_diffuse_scale(float scale) {
+    
+}
 }; // namespace godot

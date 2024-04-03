@@ -66,7 +66,7 @@ protected:
     RenderingServer* get_server();
 public:
     RBXRenderObject(RBXRenderObject& obj);
-    ~RBXRenderObject();
+    virtual ~RBXRenderObject();
     virtual void set_position(CFrame position);
     void set_visible(bool visible);
 };
@@ -81,6 +81,7 @@ public:
     virtual void set_reflectance(float refl) = 0;
     virtual void set_transparency(float transparency) = 0;
     virtual void set_color(Color3 color) = 0;
+    void set_position(CFrame position) override;
     //virtual void set_material(RBXMaterial material) = 0;
 };
 class RBXMeshPart : public RBXRenderBasePart {
@@ -120,6 +121,7 @@ protected:
     RID light_instance;
 public:
     RBXLight(RBXLight&);
+    ~RBXLight();
     virtual void create_light_instance() = 0;
     
     void set_brightness(float brightness);
@@ -156,6 +158,9 @@ protected:
     RBXLowLevelLighting()=default;
     RBXLowLevelLighting(RBXLowLevelLighting&)=delete;
     RBXLowLevelLighting& operator=(const RBXLowLevelLighting&)=delete;
+
+    Color3 ambient_light;
+    float brightness = 1;
 public:
     void set_ambient_light(Color3 color);
     void set_brightness(float brightness);
@@ -178,6 +183,7 @@ class RBXRenderingSystem {
     friend class RBXRenderBasePart;
     friend class RBXMeshPart;
     friend class RBXPartRender;
+    friend class RBXLowLevelLighting;
     friend class rblx_internal_rendering_system::RefCountedRID;
     bool enabled = false;
     Vector<RID> rids;
@@ -189,11 +195,14 @@ protected:
     void add_rid(RID rid);
     void delete_rid(RID rid); // destroys too
 
+    RBXLowLevelLighting* lighting;
+
     RenderingServer* rendering_server;
     RID scenario;//3D
     RID canvas;//2D
     RID environment;
     RID workspace_instance;
+
 protected:
     RID smooth_plastic;
 
@@ -226,6 +235,8 @@ public:
     RBXSpotLight create<RBXSpotLight>();
     template <>
     RBXSurfaceLight create<RBXSurfaceLight>();
+
+    RBXLowLevelLighting& get_lighting();
 };
 
 
