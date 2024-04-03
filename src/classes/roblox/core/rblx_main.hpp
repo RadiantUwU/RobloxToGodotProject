@@ -479,8 +479,8 @@ public:
         lua_error(L);
     }
 
-    RBLX_INLINE void yield(int nargs) {
-        lua_yield(L, nargs);
+    RBLX_INLINE auto yield(int nargs) {
+        return lua_yield(L, nargs);
     }
     // MAIN: [...], [coro], [args] -> [...], [res]
     // CORO: [...] -> [...]

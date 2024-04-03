@@ -1,3 +1,4 @@
+#include <cmath>
 #include <godot_cpp/classes/viewport.hpp>
 #include <godot_cpp/classes/world3d.hpp>
 #include <godot_cpp/classes/world2d.hpp>
@@ -144,6 +145,7 @@ void RBXRenderingSystem::enable() {
     enabled = true;
     rendering_server->scenario_set_environment(scenario, environment);
     rendering_server->instance_set_visible(workspace_instance, true);
+    rendering_server->set_main_loop_enabled(false);
     RBLX_PRINT_VERBOSE("Enabled rblx rendering system!");
 }
 void RBXRenderingSystem::disable() {
@@ -151,6 +153,7 @@ void RBXRenderingSystem::disable() {
     enabled = false;
     rendering_server->scenario_set_environment(scenario,RID());
     rendering_server->instance_set_visible(workspace_instance, false);
+    rendering_server->set_main_loop_enabled(true);
     RBLX_PRINT_VERBOSE("Disabled rblx rendering system!");
 }
 void RBXRenderingSystem::set_viewport(Viewport* viewport) {
@@ -172,8 +175,8 @@ void RBXRenderingSystem::set_viewport(Viewport* viewport) {
     }
 }
 void RBXRenderingSystem::render() {
-    if (!enabled) return;
-    rendering_server->force_draw();
+    if (enabled) 
+        rendering_server->force_draw();
 }
 void RBXRenderingSystem::load_materials() {
     RID shader;
@@ -184,11 +187,12 @@ void RBXRenderingSystem::load_materials() {
     "render_mode diffuse_toon, specular_toon, cull_disabled;"
     "instance uniform vec3 color : source_color;"
     "instance uniform float reflectance : hint_range(0,1);"
+    "global uniform float rblx_environment_specular_scale;"
     "void fragment() {"
     "   ALBEDO=color;"
     "   ROUGHNESS=0.1;"
     "   METALLIC=reflectance;"
-    "   SPECULAR=.5+.5*reflectance;"
+    "   SPECULAR=rblx_environment_specular_scale/2.0+.5*reflectance*rblx_environment_specular_scale;"
     "}"
     );
     smooth_plastic = rendering_server->material_create();
@@ -368,6 +372,7 @@ RBXLowLevelLighting& RBXRenderingSystem::get_lighting() {
     return *lighting;
 }
 
+
 void RBXLowLevelLighting::set_ambient_light(Color3 color) {
     ambient_light = color;
     rblx_renderer->rendering_server->environment_set_ambient_light(rblx_renderer->environment, ambient_light, 0, brightness, 1, 0);
@@ -379,4 +384,11 @@ void RBXLowLevelLighting::set_brightness(float brightness) {
 void RBXLowLevelLighting::set_environment_diffuse_scale(float scale) {
     
 }
+void RBXLowLevelLighting::set_environment_specular_scale(float scale) {
+    rblx_renderer->rendering_server->global_shader_parameter_set("rblx_environment_specular_scale", scale);
+}
+void RBXLowLevelLighting::set_exposure(float exp) {
+    rblx_renderer->rendering_server->environment_set_tonemap(rblx_renderer->environment, RenderingServer::ENV_TONE_MAPPER_FILMIC, pow(2, exp));
+}
+
 }; // namespace godot

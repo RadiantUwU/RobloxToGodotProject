@@ -822,6 +822,7 @@ bool TaskScheduler::resume_cycle(luau_State *L) {
 void TaskScheduler::on_frame() {
     // TODO: Task scheduler on frame to be fully implemented...
     luau_context ctx = vm->main_synchronized;
+    vm->renderer->render();
     ctx.gc_operation(LUA_GCRESTART);
     ctx.gc_operation(LUA_GCSTEP);
     ctx.gc_operation(LUA_GCSTOP);
