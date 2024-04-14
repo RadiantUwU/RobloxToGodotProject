@@ -25,3 +25,4 @@ Compiling
 ------
 - https://github.com/Manonox/GDLuau
 - https://github.com/WeaselGames/godot_luaAPI
+- https://github.com/luau-lang/luau
