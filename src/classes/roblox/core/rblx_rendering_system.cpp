@@ -133,7 +133,12 @@ RBXRenderingSystem::~RBXRenderingSystem() {
 }
 void RBXRenderingSystem::add_rid(RID rid) {
     assert(!rids.has(rid));
-    rids.append(rid);
+    rids.add(rid);
+}
+void RBXRenderingSystem::add_light_rid(RID rid) {
+    assert(!rids.has(rid));
+    lights.add(rid);
+    rids.add(rid);
 }
 void RBXRenderingSystem::delete_rid(RID rid) {
     assert(rids.has(rid));
@@ -173,6 +178,10 @@ void RBXRenderingSystem::set_viewport(Viewport* viewport) {
         part->set_position(CFrame(RBXVector3::new_(0,0,0)));
         part->set_visible(true);
     }
+}
+void RBXRenderingSystem::set_global_shadows(bool enable) {
+    for (const RID& r : lights)
+        rendering_server->light_set_shadow(r, enable);
 }
 void RBXRenderingSystem::render() {
     if (enabled) 
@@ -372,7 +381,6 @@ RBXLowLevelLighting& RBXRenderingSystem::get_lighting() {
     return *lighting;
 }
 
-
 void RBXLowLevelLighting::set_ambient_light(Color3 color) {
     ambient_light = color;
     rblx_renderer->rendering_server->environment_set_ambient_light(rblx_renderer->environment, ambient_light, 0, brightness, 1, 0);
@@ -389,6 +397,18 @@ void RBXLowLevelLighting::set_environment_specular_scale(float scale) {
 }
 void RBXLowLevelLighting::set_exposure(float exp) {
     rblx_renderer->rendering_server->environment_set_tonemap(rblx_renderer->environment, RenderingServer::ENV_TONE_MAPPER_FILMIC, pow(2, exp));
+}
+void RBXLowLevelLighting::set_fog_color(Color3 color) {
+    fog_color = color;
+}
+void RBXLowLevelLighting::set_fog_start(float depth) {
+    fog_begin_dist = depth;
+}
+void RBXLowLevelLighting::set_fog_end(float depth) {
+    fog_end_dist = depth;
+}
+void RBXLowLevelLighting::set_global_shadows(bool shadows) {
+    rblx_renderer->set_global_shadows(shadows);
 }
 
 }; // namespace godot

@@ -8,7 +8,7 @@
 #include <godot_cpp/classes/environment.hpp>
 #include <godot_cpp/variant/rid.hpp>
 #include <godot_cpp/variant/transform3d.hpp>
-#include <godot_cpp/templates/vector.hpp>
+#include <godot_cpp/templates/set.hpp>
 
 #include "rblx_basic_types.hpp"
 #include "rblx_main.hpp"
@@ -161,6 +161,9 @@ protected:
 
     Color3 ambient_light;
     float brightness = 1;
+
+    Color3 fog_color;
+    float fog_begin_dist,fog_end_dist;
 public:
     void set_ambient_light(Color3 color);
     void set_brightness(float brightness);
@@ -186,14 +189,18 @@ class RBXRenderingSystem {
     friend class RBXLowLevelLighting;
     friend class rblx_internal_rendering_system::RefCountedRID;
     bool enabled = false;
-    Vector<RID> rids;
-    Vector<RID> materials;
+    Set<RID> rids;
+    Set<RID> materials;
+    Set<RID> lights;
 
     void load_materials();
     void load_meshes();
 protected:
     void add_rid(RID rid);
+    void add_light_rid(RID rid);
     void delete_rid(RID rid); // destroys too
+
+    void set_global_shadows(bool enable);
 
     RBXLowLevelLighting* lighting;
 
